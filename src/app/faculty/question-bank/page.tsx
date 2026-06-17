@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { loadQuestions, saveQuestions, Question } from "@/lib/storage";
+import { loadQuestions, saveQuestions, loadFacultyProfile, Question } from "@/lib/storage";
 import { 
   Database, 
   Plus, 
@@ -27,7 +27,10 @@ import {
   Menu,
   Clock,
   ArrowRight,
-  Sparkles
+  Sparkles,
+  Download,
+  AlertCircle,
+  AlertTriangle
 } from "lucide-react";
 import EmptyState from "@/components/empty-state";
 
@@ -47,6 +50,34 @@ export default function QuestionBank() {
   const [showImportModal, setShowImportModal] = useState(false);
   const [selectedQuestion, setSelectedQuestion] = useState<Question | null>(null);
 
+  // CSV Import States
+  interface ParsedRow {
+    rowNum: number;
+    data: {
+      title: string;
+      language: string;
+      difficulty: "Easy" | "Medium" | "Hard";
+      topic: string;
+      marks: number;
+      tags: string[];
+    };
+    errors: string[];
+    isValid: boolean;
+  }
+
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const [parsedRows, setParsedRows] = useState<ParsedRow[]>([]);
+  const [isDragActive, setIsDragActive] = useState(false);
+  const [validationError, setValidationError] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+
+  const triggerToast = (message: string, type: "success" | "error" = "success") => {
+    setToast({ message, type });
+    setTimeout(() => {
+      setToast(prev => prev && prev.message === message ? null : prev);
+    }, 4000);
+  };
+
   // Mock Question Roster
   const [questions, setQuestions] = useState<Question[]>([]);
 
@@ -54,6 +85,239 @@ export default function QuestionBank() {
   useEffect(() => {
     setQuestions(loadQuestions());
   }, []);
+
+  // CSV Import Helpers
+  const parseCSV = (csvText: string): ParsedRow[] => {
+    const lines: string[][] = [];
+    let row: string[] = [""];
+    let inQuotes = false;
+    
+    for (let i = 0; i < csvText.length; i++) {
+      const char = csvText[i];
+      const nextChar = csvText[i + 1];
+      
+      if (char === '"') {
+        if (inQuotes && nextChar === '"') {
+          row[row.length - 1] += '"';
+          i++;
+        } else {
+          inQuotes = !inQuotes;
+        }
+      } else if (char === ',' && !inQuotes) {
+        row.push("");
+      } else if ((char === '\r' || char === '\n') && !inQuotes) {
+        if (char === '\r' && nextChar === '\n') {
+          i++;
+        }
+        lines.push(row);
+        row = [""];
+      } else {
+        row[row.length - 1] += char;
+      }
+    }
+    if (row.length > 1 || row[0] !== "") {
+      lines.push(row);
+    }
+    
+    if (lines.length === 0) return [];
+    
+    // Header parsing
+    const rawHeaders = lines[0].map(h => h.trim().toLowerCase());
+    const titleIdx = rawHeaders.indexOf("title");
+    const langIdx = rawHeaders.indexOf("language");
+    const diffIdx = rawHeaders.indexOf("difficulty");
+    const topicIdx = rawHeaders.indexOf("topic");
+    const marksIdx = rawHeaders.indexOf("marks");
+    const tagsIdx = rawHeaders.indexOf("tags");
+
+    const results: ParsedRow[] = [];
+    
+    for (let r = 1; r < lines.length; r++) {
+      const line = lines[r];
+      if (line.length === 0 || (line.length === 1 && line[0].trim() === "")) continue;
+      
+      const errors: string[] = [];
+      const title = titleIdx !== -1 && line[titleIdx] ? line[titleIdx].trim() : "";
+      const language = langIdx !== -1 && line[langIdx] ? line[langIdx].trim() : "";
+      const difficultyRaw = diffIdx !== -1 && line[diffIdx] ? line[diffIdx].trim() : "";
+      const topic = topicIdx !== -1 && line[topicIdx] ? line[topicIdx].trim() : "";
+      const marksRaw = marksIdx !== -1 && line[marksIdx] ? line[marksIdx].trim() : "";
+      const tagsRaw = tagsIdx !== -1 && line[tagsIdx] ? line[tagsIdx].trim() : "";
+      
+      if (!title) {
+        errors.push("Title is required and cannot be empty.");
+      }
+      if (!language) {
+        errors.push("Language is required and cannot be empty.");
+      }
+      
+      let difficulty: "Easy" | "Medium" | "Hard" = "Medium";
+      const diffLower = difficultyRaw.toLowerCase();
+      if (!difficultyRaw) {
+        errors.push("Difficulty is required.");
+      } else if (diffLower === "easy") {
+        difficulty = "Easy";
+      } else if (diffLower === "medium") {
+        difficulty = "Medium";
+      } else if (diffLower === "hard") {
+        difficulty = "Hard";
+      } else {
+        errors.push(`Invalid difficulty '${difficultyRaw}'. Must be one of: Easy, Medium, Hard.`);
+      }
+      
+      if (!topic) {
+        errors.push("Topic is required.");
+      }
+      
+      let marks = 0;
+      if (!marksRaw) {
+        errors.push("Marks is required.");
+      } else {
+        const parsedMarks = Number(marksRaw);
+        if (isNaN(parsedMarks) || parsedMarks <= 0) {
+          errors.push(`Invalid marks '${marksRaw}'. Must be a positive number.`);
+        } else {
+          marks = Math.floor(parsedMarks);
+        }
+      }
+      
+      const tags = tagsRaw 
+        ? tagsRaw.split(/[;,]/).map(t => t.trim()).filter(Boolean) 
+        : [];
+        
+      results.push({
+        rowNum: r + 1,
+        data: {
+          title,
+          language,
+          difficulty,
+          topic,
+          marks,
+          tags
+        },
+        errors,
+        isValid: errors.length === 0
+      });
+    }
+    
+    return results;
+  };
+
+  const handleCSVFile = (file: File) => {
+    setValidationError(null);
+    if (!file.name.toLowerCase().endsWith(".csv")) {
+      setValidationError("File format not supported. Please select a valid CSV file.");
+      return;
+    }
+    
+    setUploadedFile(file);
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const text = e.target?.result as string;
+        const results = parseCSV(text);
+        if (results.length === 0) {
+          setValidationError("The uploaded CSV file contains no question records.");
+          setParsedRows([]);
+        } else {
+          setParsedRows(results);
+        }
+      } catch (err) {
+        setValidationError("Failed to parse CSV file. Please verify file integrity.");
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  const handleDownloadSample = () => {
+    const csvContent = [
+      "Title,Language,Difficulty,Topic,Marks,Tags",
+      'Invert a Binary Tree,C++,Medium,Data Structures,15,"Trees, Recursion"',
+      'Fibonacci Sequence,Python,Easy,Recursion,10,"Recursion, Python"',
+      'Validate Binary Search Tree,Java,Medium,Data Structures,15,"Trees, BST"',
+      'Implement Dijkstra shortest path,C++,Hard,Algorithms,20,"Graphs, Shortest Path"'
+    ].join("\n");
+    
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", "sample_questions.csv");
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleDownloadErrorReport = () => {
+    if (parsedRows.length === 0) return;
+    const invalid = parsedRows.filter(r => !r.isValid);
+    if (invalid.length === 0) return;
+    
+    const csvHeaders = "Row,Title,Language,Difficulty,Topic,Marks,Tags,Errors\n";
+    const csvContent = invalid.map(r => {
+      const titleEscaped = `"${r.data.title.replace(/"/g, '""')}"`;
+      const langEscaped = `"${r.data.language.replace(/"/g, '""')}"`;
+      const diffEscaped = `"${r.data.difficulty.replace(/"/g, '""')}"`;
+      const topicEscaped = `"${r.data.topic.replace(/"/g, '""')}"`;
+      const marksEscaped = r.data.marks;
+      const tagsEscaped = `"${r.data.tags.join(", ").replace(/"/g, '""')}"`;
+      const errorsEscaped = `"${r.errors.join("; ").replace(/"/g, '""')}"`;
+      return `${r.rowNum},${titleEscaped},${langEscaped},${diffEscaped},${topicEscaped},${marksEscaped},${tagsEscaped},${errorsEscaped}`;
+    }).join("\n");
+    
+    const blob = new Blob([csvHeaders + csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `${uploadedFile?.name.replace(".csv", "")}_error_report.csv`);
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const executeImportValid = () => {
+    const valid = parsedRows.filter(r => r.isValid);
+    if (valid.length === 0) {
+      triggerToast("No valid questions to import.", "error");
+      return;
+    }
+    
+    const faculty = loadFacultyProfile();
+    const newQuestions: Question[] = valid.map((row, idx) => ({
+      id: (Date.now() + idx).toString(),
+      title: row.data.title,
+      language: row.data.language,
+      difficulty: row.data.difficulty,
+      marks: row.data.marks,
+      topic: row.data.topic,
+      lastUpdated: new Date().toISOString().split("T")[0],
+      status: "Active",
+      timesUsed: 0,
+      avgScore: "N/A",
+      successRate: "N/A",
+      avgTime: "N/A",
+      createdBy: faculty.fullName || "Faculty HOD",
+      createdDate: new Date().toISOString().split("T")[0],
+      version: 1,
+      tags: row.data.tags
+    }));
+    
+    const updated = [...newQuestions, ...questions];
+    setQuestions(updated);
+    saveQuestions(updated);
+    
+    triggerToast(`Successfully imported ${newQuestions.length} questions.`);
+    setShowImportModal(false);
+    resetImportUploader();
+  };
+
+  const resetImportUploader = () => {
+    setUploadedFile(null);
+    setParsedRows([]);
+    setValidationError(null);
+  };
 
   // Actions
   const handleDuplicate = (q: Question) => {
@@ -118,7 +382,7 @@ export default function QuestionBank() {
             onClick={() => setShowImportModal(true)}
             className="bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 font-bold px-3 py-2 rounded-md flex items-center gap-1.5 transition-all focus-ring"
           >
-            <Upload className="w-3.5 h-3.5 text-slate-500" /> Bulk Import
+            <Upload className="w-3.5 h-3.5 text-slate-500" /> Import CSV
           </button>
           <Link 
             href="/faculty/question-bank/create"
@@ -484,77 +748,214 @@ export default function QuestionBank() {
 
       {/* ========================================================================= */}
       {/* MODAL SHEET 1: BULK IMPORT CSV */}
-      {showImportModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-          <div onClick={() => setShowImportModal(false)} className="absolute inset-0 bg-slate-900/40 backdrop-blur-xs"></div>
-          <div className="bg-white border border-slate-200 rounded-lg shadow-2xl max-w-md w-full relative z-[101] overflow-hidden flex flex-col font-sans">
+      {showImportModal && (() => {
+        const fileInputRef = React.useRef<HTMLInputElement>(null);
+        const validCount = parsedRows.filter(r => r.isValid).length;
+        const invalidCount = parsedRows.filter(r => !r.isValid).length;
+        
+        return (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <div 
+              onClick={() => {
+                setShowImportModal(false);
+                resetImportUploader();
+              }} 
+              className="absolute inset-0 bg-slate-900/40 backdrop-blur-xs"
+            ></div>
             
-            <button 
-              onClick={() => setShowImportModal(false)}
-              className="absolute right-4 top-4 text-slate-400 hover:text-slate-650 p-1 hover:bg-slate-100 rounded"
-              aria-label="Close modal"
-            >
-              <X className="w-4 h-4" />
-            </button>
-
-            <div className="px-6 pt-6 pb-4 border-b border-slate-100 bg-slate-50/50">
-              <span className="text-[10px] font-bold text-navy-800 tracking-wider uppercase">CSV Bulk Uploader</span>
-              <h3 className="text-base font-bold text-slate-900 mt-1">Import Questions Spreadsheet</h3>
-            </div>
-
-            <div className="p-6 space-y-4">
-              <p className="text-xs text-slate-500 leading-relaxed">
-                Quickly add multiple coding questions at once by uploading an institutional CSV file structure.
-              </p>
-
-              {/* Mock upload dropzone */}
-              <div 
-                onClick={() => alert("Simulation: File upload triggered. Loaded template.csv - 4 questions parsed.")}
-                className="border-2 border-dashed border-slate-200 hover:border-slate-350 bg-slate-50 rounded-lg p-8 text-center cursor-pointer transition-all flex flex-col items-center justify-center"
+            <div className="bg-white border border-slate-200 rounded-lg shadow-2xl max-w-md w-full relative z-[101] overflow-hidden flex flex-col font-sans">
+              
+              <button 
+                onClick={() => {
+                  setShowImportModal(false);
+                  resetImportUploader();
+                }}
+                className="absolute right-4 top-4 text-slate-400 hover:text-slate-650 p-1 hover:bg-slate-100 rounded"
+                aria-label="Close modal"
               >
-                <FileSpreadsheet className="w-8 h-8 text-slate-400 mb-2" />
-                <p className="font-bold text-slate-700 text-xs">Drag and drop your CSV file here</p>
-                <p className="text-[10px] text-slate-400 mt-1">or click to browse local folders</p>
+                <X className="w-4 h-4" />
+              </button>
+
+              <div className="px-6 pt-6 pb-4 border-b border-slate-100 bg-slate-50/50">
+                <span className="text-[10px] font-bold text-navy-800 tracking-wider uppercase">CSV Bulk Uploader</span>
+                <h3 className="text-base font-bold text-slate-900 mt-1">Import Questions Spreadsheet</h3>
               </div>
 
-              {/* Template details */}
-              <div className="bg-slate-50 p-3 rounded border border-slate-150 space-y-1.5 text-[10px] text-slate-600">
-                <p className="font-bold text-slate-800 uppercase tracking-wider">Required CSV Columns Schema:</p>
-                <p className="font-mono text-slate-500">
-                  Title, Language, Difficulty, Topic, Marks, ProblemStatement, InputFormat, OutputFormat, Constraints, TestCasesJson
-                </p>
-                <button 
-                  onClick={() => alert("Simulation: Downloading CSV Template.")}
-                  className="text-navy-900 font-bold hover:underline block pt-1"
+              <div className="p-6 space-y-4">
+                {uploadedFile === null ? (
+                  <>
+                    <p className="text-xs text-slate-500 leading-relaxed">
+                      Quickly add multiple coding questions at once by uploading an institutional CSV file.
+                    </p>
+
+                    <input 
+                      type="file" 
+                      ref={fileInputRef}
+                      onChange={(e) => {
+                        if (e.target.files?.[0]) {
+                          handleCSVFile(e.target.files[0]);
+                        }
+                      }}
+                      accept=".csv"
+                      className="hidden"
+                    />
+
+                    {/* Drag and Drop zone */}
+                    <div 
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        setIsDragActive(true);
+                      }}
+                      onDragEnter={(e) => {
+                        e.preventDefault();
+                        setIsDragActive(true);
+                      }}
+                      onDragLeave={() => setIsDragActive(false)}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        setIsDragActive(false);
+                        if (e.dataTransfer.files?.[0]) {
+                          handleCSVFile(e.dataTransfer.files[0]);
+                        }
+                      }}
+                      onClick={() => fileInputRef.current?.click()}
+                      className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-all flex flex-col items-center justify-center ${
+                        isDragActive 
+                          ? "border-blue-500 bg-blue-50/30" 
+                          : "border-slate-200 hover:border-slate-350 bg-slate-50"
+                      }`}
+                    >
+                      <FileSpreadsheet className={`w-8 h-8 mb-2 transition-colors ${isDragActive ? "text-blue-500" : "text-slate-400"}`} />
+                      <p className="font-bold text-slate-700 text-xs">Drag and drop your CSV file here</p>
+                      <p className="text-[10px] text-slate-400 mt-1">or click to browse local folders</p>
+                      <span className="text-[8px] font-bold text-slate-500 mt-2 uppercase tracking-wide bg-slate-200/60 border border-slate-300 px-2 py-0.5 rounded">
+                        .csv only supported
+                      </span>
+                    </div>
+
+                    {validationError && (
+                      <div className="bg-rose-50 border border-rose-200 text-rose-800 p-2.5 rounded text-[10px] flex items-center gap-2 font-medium">
+                        <AlertCircle className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+                        <span>{validationError}</span>
+                      </div>
+                    )}
+
+                    {/* Template details */}
+                    <div className="bg-slate-50 p-3 rounded border border-slate-150 space-y-1.5 text-[10px] text-slate-650">
+                      <p className="font-bold text-slate-800 uppercase tracking-wider text-[9px]">Required Columns Schema:</p>
+                      <p className="font-mono text-slate-500 border-b border-slate-200 pb-1.5">
+                        Title, Language, Difficulty, Topic, Marks, Tags
+                      </p>
+                      <button 
+                        onClick={handleDownloadSample}
+                        className="text-navy-900 font-extrabold hover:underline flex items-center gap-1 mt-1 font-sans"
+                      >
+                        <Download className="w-3.5 h-3.5" /> Download CSV Schema Template
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="bg-slate-50 p-3 rounded-lg border border-slate-200 space-y-2">
+                      <div className="flex justify-between items-center text-[10px] border-b border-slate-200 pb-1.5">
+                        <span className="text-slate-500 font-bold uppercase truncate max-w-[200px]" title={uploadedFile.name}>
+                          File: {uploadedFile.name}
+                        </span>
+                        <span className="text-slate-400 font-mono font-medium">
+                          {(uploadedFile.size / 1024).toFixed(2)} KB
+                        </span>
+                      </div>
+
+                      {/* Summary Metrics */}
+                      <div className="grid grid-cols-3 gap-2 py-1">
+                        <div className="text-center bg-white p-2 border border-slate-150 rounded">
+                          <p className="text-[8px] uppercase text-slate-400 font-bold">Total Rows</p>
+                          <p className="text-base font-extrabold text-slate-800 mt-0.5">{parsedRows.length}</p>
+                        </div>
+                        <div className="text-center bg-emerald-50/50 p-2 border border-emerald-150 rounded">
+                          <p className="text-[8px] uppercase text-emerald-650 font-bold">Valid Rows</p>
+                          <p className="text-base font-extrabold text-emerald-700 mt-0.5">{validCount}</p>
+                        </div>
+                        <div className="text-center bg-rose-50/50 p-2 border border-rose-150 rounded">
+                          <p className="text-[8px] uppercase text-rose-650 font-bold">Errors Found</p>
+                          <p className="text-base font-extrabold text-rose-750 mt-0.5">{invalidCount}</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Validation Error Reports scrollable list */}
+                    {invalidCount > 0 && (
+                      <div className="bg-rose-50/40 border border-rose-150 rounded-lg p-3 max-h-[140px] overflow-y-auto text-[10px] space-y-1.5 text-rose-800 leading-normal">
+                        <p className="font-extrabold uppercase tracking-wider text-[8px] border-b border-rose-200 pb-1.5 flex items-center gap-1.5 font-sans">
+                          <AlertTriangle className="w-3.5 h-3.5 text-rose-600 animate-pulse" /> 
+                          Validation Error Logs
+                        </p>
+                        {parsedRows.filter(r => !r.isValid).map(row => (
+                          <div key={row.rowNum} className="font-mono">
+                            <span className="font-bold">Row {row.rowNum}:</span>
+                            <ul className="list-disc pl-4 mt-0.5 space-y-0.5">
+                              {row.errors.map((err, i) => (
+                                <li key={i}>{err}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Actions block */}
+                    <div className="flex gap-2">
+                      {invalidCount > 0 && (
+                        <button
+                          type="button"
+                          onClick={handleDownloadErrorReport}
+                          className="flex-1 bg-white hover:bg-slate-50 border border-rose-200 text-rose-800 py-2 rounded-md font-bold transition-all flex items-center justify-center gap-1 text-[10px]"
+                        >
+                          <Download className="w-3.5 h-3.5" /> Download Error Report
+                        </button>
+                      )}
+                      
+                      <button
+                        type="button"
+                        onClick={resetImportUploader}
+                        className="flex-1 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 py-2 rounded-md font-bold transition-all text-[10px]"
+                      >
+                        Upload Another File
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              <div className="px-6 py-4 border-t border-slate-100 bg-slate-50 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowImportModal(false);
+                    resetImportUploader();
+                  }}
+                  className="px-4 py-2 border border-slate-200 hover:bg-slate-100 rounded-md font-bold"
                 >
-                  Download CSV Schema Template (.csv)
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={uploadedFile === null || validCount === 0}
+                  onClick={executeImportValid}
+                  className={`px-4 py-2 text-white rounded-md font-bold transition-all ${
+                    uploadedFile === null || validCount === 0
+                      ? "bg-slate-300 text-slate-505 cursor-not-allowed border border-slate-200"
+                      : "bg-navy-900 hover:bg-navy-950"
+                  }`}
+                >
+                  Import Valid Questions {validCount > 0 ? `(${validCount})` : ""}
                 </button>
               </div>
-            </div>
 
-            <div className="px-6 py-4 border-t border-slate-100 bg-slate-50 flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setShowImportModal(false)}
-                className="px-4 py-2 border border-slate-200 hover:bg-slate-100 rounded-md font-bold"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  alert("Simulation: Imported 4 questions into the bank.");
-                  setShowImportModal(false);
-                }}
-                className="px-4 py-2 bg-navy-900 hover:bg-navy-950 text-white rounded-md font-bold"
-              >
-                Start Parse & Upload
-              </button>
             </div>
-
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* ========================================================================= */}
       {/* DRAWER SHEET 2: QUESTION DETAILS - ANALYTICS & HISTORY */}
@@ -658,6 +1059,32 @@ export default function QuestionBank() {
             </div>
 
           </div>
+        </div>
+      )}
+
+      {/* Toast Notification overlay */}
+      {toast && (
+        <div 
+          className={`fixed bottom-6 right-6 z-[200] border text-white rounded-lg shadow-2xl px-4 py-3 flex items-center gap-2.5 animate-slide-in font-sans ${
+            toast.type === "success" 
+              ? "bg-slate-900 border-slate-800" 
+              : "bg-rose-950 border-rose-900 text-rose-200"
+          }`}
+        >
+          {toast.type === "success" ? (
+            <CheckCircle className="w-5 h-5 text-emerald-400 shrink-0" />
+          ) : (
+            <AlertCircle className="w-5 h-5 text-rose-500 shrink-0" />
+          )}
+          <div className="text-xs font-semibold">
+            {toast.message}
+          </div>
+          <button 
+            onClick={() => setToast(null)}
+            className="text-slate-400 hover:text-white font-bold ml-1.5"
+          >
+            ✕
+          </button>
         </div>
       )}
 
