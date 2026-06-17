@@ -35,7 +35,7 @@ export default function AnalyticsDashboardView({
 }: AnalyticsDashboardViewProps) {
   // Roles list
   const roles = ["Faculty", "HOD", "Principal", "Admin"] as const;
-  const [currentRole, setCurrentRole] = useState<typeof roles[number]>(initialRole);
+  const [currentRole, setCurrentRole] = useState<typeof roles[number]>("Faculty");
 
   // States
   const [timeRange, setTimeRange] = useState<"Weekly" | "Monthly" | "Semester" | "Yearly">("Semester");
@@ -226,22 +226,7 @@ export default function AnalyticsDashboardView({
             )}
           </div>
 
-          {/* Role selector dropdown */}
-          <div className="flex items-center gap-1.5">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Scope:</span>
-            <div className="relative">
-              <select 
-                value={currentRole}
-                onChange={(e) => handleRoleChange(e.target.value as any)}
-                className="bg-navy-900 text-white font-bold px-3 py-1.5 rounded-md border border-navy-950 hover:bg-navy-950 transition-colors cursor-pointer appearance-none pr-8 text-[11px]"
-              >
-                {roles.map(role => (
-                  <option key={role} value={role}>{role} View</option>
-                ))}
-              </select>
-              <ChevronDown className="w-3.5 h-3.5 text-slate-300 absolute right-2.5 top-2 pointer-events-none" />
-            </div>
-          </div>
+
 
           {/* Export tools */}
           <div className="flex items-center gap-1">
