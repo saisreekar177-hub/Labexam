@@ -161,14 +161,10 @@ export default function FacultyDashboard() {
     difficulty: "Medium" as const,
     tagsString: "",
     description: "",
-    coMapping: "CO1",
-    bloomsLevel: "Remember",
-    assessmentType: "Coding",
     maxMarks: 10,
     estimatedTime: 30,
     allowedLanguages: ["C", "C++", "Java", "Python", "JavaScript"] as string[],
-    facultyNotes: "",
-    status: "Published"
+    facultyNotes: ""
   });
 
   // Action: Add New Exam
@@ -266,13 +262,9 @@ export default function FacultyDashboard() {
       version: 1,
       tags: tags,
       description: newQuestion.description,
-      coMapping: newQuestion.coMapping,
-      bloomsLevel: newQuestion.bloomsLevel,
-      assessmentType: newQuestion.assessmentType,
       estimatedTime: newQuestion.estimatedTime,
       allowedLanguages: newQuestion.allowedLanguages,
-      facultyNotes: newQuestion.facultyNotes,
-      publishStatus: newQuestion.status
+      facultyNotes: newQuestion.facultyNotes
     };
 
     const allQuestions = [addedStorage, ...loadQuestions()];
@@ -295,14 +287,10 @@ export default function FacultyDashboard() {
       difficulty: "Medium", 
       tagsString: "",
       description: "",
-      coMapping: "CO1",
-      bloomsLevel: "Remember",
-      assessmentType: "Coding",
       maxMarks: 10,
       estimatedTime: 30,
       allowedLanguages: ["C", "C++", "Java", "Python", "JavaScript"],
-      facultyNotes: "",
-      status: "Published"
+      facultyNotes: ""
     });
   };
 
@@ -1303,70 +1291,6 @@ export default function FacultyDashboard() {
                   />
                 </div>
 
-                {/* 2 & 3. CO Mapping & Bloom's Taxonomy Level */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <label className="block font-bold text-slate-700">Learning Outcome / CO Mapping</label>
-                    <select
-                      value={newQuestion.coMapping}
-                      onChange={(e) => setNewQuestion({ ...newQuestion, coMapping: e.target.value })}
-                      className="w-full text-slate-900 border border-slate-200 rounded-md px-3 py-2 bg-white focus:outline-hidden focus:ring-1 focus:ring-navy-900"
-                    >
-                      <option value="CO1">CO1</option>
-                      <option value="CO2">CO2</option>
-                      <option value="CO3">CO3</option>
-                      <option value="CO4">CO4</option>
-                      <option value="CO5">CO5</option>
-                      <option value="CO6">CO6</option>
-                    </select>
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="block font-bold text-slate-700">Bloom's Taxonomy Level</label>
-                    <select
-                      value={newQuestion.bloomsLevel}
-                      onChange={(e) => setNewQuestion({ ...newQuestion, bloomsLevel: e.target.value })}
-                      className="w-full text-slate-900 border border-slate-200 rounded-md px-3 py-2 bg-white focus:outline-hidden focus:ring-1 focus:ring-navy-900"
-                    >
-                      <option value="Remember">Remember</option>
-                      <option value="Understand">Understand</option>
-                      <option value="Apply">Apply</option>
-                      <option value="Analyze">Analyze</option>
-                      <option value="Evaluate">Evaluate</option>
-                      <option value="Create">Create</option>
-                    </select>
-                  </div>
-                </div>
-
-                {/* 4 & 9. Assessment Type & Question Status */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <label className="block font-bold text-slate-700">Assessment Type</label>
-                    <select
-                      value={newQuestion.assessmentType}
-                      onChange={(e) => setNewQuestion({ ...newQuestion, assessmentType: e.target.value })}
-                      className="w-full text-slate-900 border border-slate-200 rounded-md px-3 py-2 bg-white focus:outline-hidden focus:ring-1 focus:ring-navy-900"
-                    >
-                      <option value="Coding">Coding</option>
-                      <option value="Debugging">Debugging</option>
-                      <option value="MCQ">MCQ</option>
-                      <option value="Short Answer">Short Answer</option>
-                      <option value="Case Study">Case Study</option>
-                    </select>
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="block font-bold text-slate-700">Question Status</label>
-                    <select
-                      value={newQuestion.status}
-                      onChange={(e) => setNewQuestion({ ...newQuestion, status: e.target.value })}
-                      className="w-full text-slate-900 border border-slate-200 rounded-md px-3 py-2 bg-white focus:outline-hidden focus:ring-1 focus:ring-navy-900"
-                    >
-                      <option value="Draft">Draft</option>
-                      <option value="Published">Published</option>
-                    </select>
-                  </div>
-                </div>
 
                 {/* 5 & 6. Max Marks & Estimated Completion Time */}
                 <div className="grid grid-cols-2 gap-4">
