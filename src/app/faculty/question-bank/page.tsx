@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { loadQuestions, saveQuestions, loadFacultyProfile, Question } from "@/lib/storage";
+import { loadQuestions, saveQuestions, loadFacultyProfile, Question, loadAssessments, saveAssessments } from "@/lib/storage";
 import { 
   Database, 
   Plus, 
@@ -83,10 +83,73 @@ export default function QuestionBank() {
   // Mock Question Roster
   const [questions, setQuestions] = useState<Question[]>([]);
 
-  // Load questions on mount
+  // Selection mode states for linking questions to an assessment
+  const [addingToAssessment, setAddingToAssessment] = useState<{ id: string; name: string } | null>(null);
+  const [selectedQuestionIds, setSelectedQuestionIds] = useState<string[]>([]);
+
+  // Load questions and URL search parameters on mount
   useEffect(() => {
     setQuestions(loadQuestions());
+
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const action = params.get("action");
+      const assessmentId = params.get("assessmentId");
+      const assessmentName = params.get("assessmentName");
+
+      if (action === "add-questions" && assessmentId && assessmentName) {
+        setAddingToAssessment({ id: assessmentId, name: assessmentName });
+
+        // Load existing linked questions if any
+        const stored = localStorage.getItem("examcoder_assessment_questions_" + assessmentId);
+        if (stored) {
+          try {
+            const parsed = JSON.parse(stored);
+            if (Array.isArray(parsed)) {
+              setSelectedQuestionIds(parsed.map((q: any) => q.id));
+            }
+          } catch (e) {
+            console.error("Error loading linked questions", e);
+          }
+        }
+      }
+    }
   }, []);
+
+  const handleToggleSelectQuestion = (id: string) => {
+    setSelectedQuestionIds(prev => 
+      prev.includes(id) ? prev.filter(qId => qId !== id) : [...prev, id]
+    );
+  };
+
+  const handleFinishLinking = () => {
+    if (!addingToAssessment) return;
+
+    const selectedQuestions = questions.filter(q => selectedQuestionIds.includes(q.id));
+    localStorage.setItem("examcoder_assessment_questions_" + addingToAssessment.id, JSON.stringify(selectedQuestions));
+
+    // Also update questionsCount in assessments list
+    const assessmentsList = loadAssessments();
+    const updated = assessmentsList.map((a: any) => {
+      if (a.id === addingToAssessment.id) {
+        return { ...a, questionsCount: selectedQuestions.length };
+      }
+      return a;
+    });
+    saveAssessments(updated);
+
+    triggerToast(`Linked ${selectedQuestions.length} questions to "${addingToAssessment.name}" successfully.`);
+    
+    setTimeout(() => {
+      router.push(`/faculty/assessments/${addingToAssessment.id}`);
+    }, 1200);
+  };
+
+  const handleCancelLinking = () => {
+    setAddingToAssessment(null);
+    setSelectedQuestionIds([]);
+    router.replace("/faculty/question-bank");
+  };
 
   // CSV Import Helpers
   const parseCSV = (csvText: string): ParsedRow[] => {
@@ -469,6 +532,43 @@ export default function QuestionBank() {
       {/* Main Body content */}
       <main className="max-w-7xl w-full mx-auto p-6 md:p-8 space-y-6 flex-1">
         
+        {addingToAssessment && (
+          <div className="bg-navy-950 text-white p-4 rounded-lg border border-navy-900 shadow-md flex flex-col sm:flex-row items-center justify-between gap-4 transition-all">
+            <div className="flex items-center gap-3">
+              <div className="bg-emerald-500/10 text-emerald-400 p-2 rounded-full border border-emerald-500/20">
+                <Sparkles className="w-4 h-4 animate-pulse" />
+              </div>
+              <div>
+                <p className="font-bold text-xs">Assigning Questions to Assessment</p>
+                <p className="text-[10px] text-slate-350 mt-0.5">
+                  Target Exam: <span className="font-extrabold text-white">{addingToAssessment.name}</span>
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-4">
+              <span className="bg-navy-900 border border-navy-800 text-white font-mono font-bold px-3 py-1 rounded text-[10px]">
+                {selectedQuestionIds.length} {selectedQuestionIds.length === 1 ? "Question" : "Questions"} Selected
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleCancelLinking}
+                  className="bg-navy-900 hover:bg-navy-800 text-slate-350 hover:text-white border border-navy-850 hover:border-navy-700 font-bold px-3 py-1.5 rounded transition-all text-[10px]"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleFinishLinking}
+                  className="bg-emerald-500 hover:bg-emerald-600 text-white font-bold px-4 py-1.5 rounded transition-all text-[10px] flex items-center gap-1.5 shadow-sm"
+                >
+                  <CheckCircle className="w-3.5 h-3.5" /> Save & Link to Exam
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* State Toggle Selector for Preview */}
         <div className="bg-white border border-slate-200 rounded-lg p-3 shadow-2xs flex flex-wrap gap-2 items-center justify-between">
           <span className="font-bold text-slate-500 uppercase text-[9px] tracking-wider">Empty State Preview Toggles:</span>
@@ -641,6 +741,7 @@ export default function QuestionBank() {
                     <table className="w-full text-left border-collapse text-xs">
                       <thead>
                         <tr className="bg-slate-50 text-slate-500 font-bold uppercase text-[10px] border-b border-slate-200">
+                          {addingToAssessment && <th className="py-3 px-4 w-12 text-center">Select</th>}
                           <th className="py-3 px-4">Question Title</th>
                           <th className="py-3 px-4">Language</th>
                           <th className="py-3 px-4">Topic</th>
@@ -653,6 +754,16 @@ export default function QuestionBank() {
                       <tbody className="divide-y divide-slate-150">
                         {filteredQuestions.map((q) => (
                           <tr key={q.id} className="hover:bg-slate-50/50">
+                            {addingToAssessment && (
+                              <td className="py-3 px-4 text-center">
+                                <input 
+                                  type="checkbox"
+                                  checked={selectedQuestionIds.includes(q.id)}
+                                  onChange={() => handleToggleSelectQuestion(q.id)}
+                                  className="rounded border-slate-350 text-navy-900 w-4 h-4 cursor-pointer"
+                                />
+                              </td>
+                            )}
                             <td className="py-3 px-4">
                               <button 
                                 onClick={() => setSelectedQuestion(q)}
@@ -723,13 +834,23 @@ export default function QuestionBank() {
                       <div>
                         <div className="flex justify-between items-start">
                           <span className="text-[10px] font-mono text-slate-400">{q.language} • {q.topic}</span>
-                          <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${
-                            q.difficulty === "Easy" ? "bg-emerald-50 border border-emerald-200 text-emerald-800" :
-                            q.difficulty === "Medium" ? "bg-amber-50 border border-amber-200 text-amber-800" :
-                            "bg-rose-50 border border-rose-200 text-rose-800"
-                          }`}>
-                            {q.difficulty}
-                          </span>
+                          <div className="flex items-center gap-2">
+                            {addingToAssessment && (
+                              <input 
+                                type="checkbox"
+                                checked={selectedQuestionIds.includes(q.id)}
+                                onChange={() => handleToggleSelectQuestion(q.id)}
+                                className="rounded border-slate-355 text-navy-900 w-4 h-4 cursor-pointer mr-1"
+                              />
+                            )}
+                            <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${
+                              q.difficulty === "Easy" ? "bg-emerald-50 border border-emerald-200 text-emerald-800" :
+                              q.difficulty === "Medium" ? "bg-amber-50 border border-amber-200 text-amber-800" :
+                              "bg-rose-50 border border-rose-200 text-rose-800"
+                            }`}>
+                              {q.difficulty}
+                            </span>
+                          </div>
                         </div>
                         <h4 className="font-bold text-slate-900 text-sm mt-2">{q.title}</h4>
                         <div className="flex items-center gap-4 text-slate-500 font-medium text-[10px] pt-1">

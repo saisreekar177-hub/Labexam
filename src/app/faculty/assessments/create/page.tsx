@@ -167,9 +167,12 @@ export default function CreateAssessment() {
       const allExams = [storageExam, ...loadAssessments()];
       saveAssessments(allExams);
 
+      // Save initial questions to localStorage for this assessment
+      localStorage.setItem("examcoder_assessment_questions_" + storageExam.id, JSON.stringify(selectedQuestions));
+
       setIsLoading(false);
       alert(`Secure assessment "${name}" published successfully and dispatched to sandboxed nodes.`);
-      router.push("/faculty/assessments");
+      router.push(`/faculty/question-bank?action=add-questions&assessmentId=${storageExam.id}&assessmentName=${encodeURIComponent(storageExam.name)}`);
     }, 1200);
   };
 

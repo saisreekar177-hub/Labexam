@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { 
   Users, 
   BookOpen, 
@@ -79,6 +80,7 @@ interface Question {
 }
 
 export default function FacultyDashboard() {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState("dashboard");
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
@@ -523,7 +525,7 @@ export default function FacultyDashboard() {
       name: newExam.name,
       subject: newExam.subject,
       duration: durationNum,
-      questionsCount: 2,
+      questionsCount: 0,
       assignedCount: newExam.assignedCount,
       status: "Scheduled" as const,
       createdDate: new Date().toISOString().split("T")[0],
@@ -546,6 +548,9 @@ export default function FacultyDashboard() {
     setAssessments([created, ...assessments]);
     setShowCreateExamModal(false);
     setNewExam({ name: "", subject: "", duration: "180 mins", assignedCount: 60, status: "Scheduled" });
+    
+    // Redirect to Question Bank to add questions
+    router.push(`/faculty/question-bank?action=add-questions&assessmentId=${storageExam.id}&assessmentName=${encodeURIComponent(storageExam.name)}`);
   };
 
   // Action: Upload Mock Student Roster

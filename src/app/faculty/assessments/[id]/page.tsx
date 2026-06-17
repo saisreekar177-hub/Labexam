@@ -1,6 +1,6 @@
 "use client";
 
-import React, { use, useState } from "react";
+import React, { use, useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { 
@@ -216,6 +216,43 @@ export default function AssessmentDetails({ params }: PageProps) {
   const [simIsRunningCode, setSimIsRunningCode] = useState(false);
   const [simFullscreenSimulated, setSimFullscreenSimulated] = useState(false);
   const [simWarningsSimCount, setSimWarningsSimCount] = useState(0);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("examcoder_assessment_questions_" + id);
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            const mapped: MockQuestion[] = parsed.map((q, idx) => ({
+              id: q.id || `q-${idx}`,
+              title: q.title,
+              difficulty: q.difficulty,
+              topic: q.topic,
+              marks: q.marks,
+              language: q.language || "C++ / Java / Python",
+              description: q.description || "Given the coding challenge statement...",
+              inputFormat: "Standard Input streams.",
+              outputFormat: "Standard Output streams.",
+              constraints: "Standard execution environments.",
+              sampleInput: "No custom verification case defined.",
+              sampleOutput: "No output validation case defined.",
+              codeBoilerplate: {
+                cpp: `// C++ Template\n#include <iostream>\nusing namespace std;\n\nint main() {\n    // Write your code here\n    return 0;\n}`,
+                java: `// Java Template\nclass Solution {\n    public static void main(String[] args) {\n        // Write your code here\n    }\n}`,
+                python: `# Python Template\ndef solve():\n    # Write your code here\n    pass\n\nif __name__ == '__main__':\n    solve()`
+              }
+            }));
+            setQuestions(mapped);
+            setSimSelectedQuestion(mapped[0]);
+            setSimCode(mapped[0].codeBoilerplate.python);
+          }
+        } catch (err) {
+          console.error("Failed to parse linked questions", err);
+        }
+      }
+    }
+  }, [id]);
 
   // Sync boilerplate on question/language switch
   const handleSimQuestionChange = (q: MockQuestion) => {
