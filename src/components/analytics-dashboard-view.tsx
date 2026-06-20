@@ -603,7 +603,7 @@ export default function AnalyticsDashboardView({
             </Link>
           ) : (
             <Link 
-              href="/faculty/dashboard"
+              href="/faculty/assessments"
               className="bg-navy-900 hover:bg-navy-950 text-white font-bold px-4 py-2 rounded-md transition-all shadow-xs text-center"
             >
               Go to Assessments Dashboard
