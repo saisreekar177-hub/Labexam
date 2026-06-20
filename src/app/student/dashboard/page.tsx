@@ -432,29 +432,7 @@ export default function StudentDashboard() {
                   <span className="font-bold text-slate-900">{studentData.dept} (A)</span>
                 </div>
               </div>
-            </div>
-
-            {/* Network Security Status */}
-            <div className="bg-white border border-slate-200 rounded-lg p-5 space-y-3 shadow-2xs">
-              <h3 className="font-bold text-slate-900 uppercase tracking-wider text-[9px] border-b border-slate-100 pb-2 flex items-center gap-1.5 text-slate-500">
-                <ClipboardList className="w-4 h-4" /> Session Network Surveillance
-              </h3>
-              
-              <div className="space-y-2.5 bg-slate-50 p-3.5 rounded border border-slate-200 font-mono text-[9px] text-slate-600 leading-normal">
-                <div className="flex items-center justify-between border-b border-slate-150 pb-1.5">
-                  <span>Client IP Address:</span>
-                  <span className="text-slate-800 font-bold">{studentData.ip}</span>
                 </div>
-                <div className="flex items-center justify-between border-b border-slate-150 pb-1.5">
-                  <span>Intranet Subnet Check:</span>
-                  <span className="text-emerald-800 font-bold uppercase">PSG-LAN Verified</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span>Node Security Level:</span>
-                  <span className="text-emerald-800 font-bold uppercase">Standard Sandbox</span>
-                </div>
-              </div>
-            </div>
 
           </div>
 
