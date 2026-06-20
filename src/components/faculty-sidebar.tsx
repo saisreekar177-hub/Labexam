@@ -109,22 +109,7 @@ export default function FacultySidebar({
           </nav>
         </div>
 
-        {/* Footer info details */}
-        <div className="p-6 border-t border-slate-800 space-y-2">
-          <div className="bg-slate-950 p-2.5 rounded border border-slate-800 font-mono text-[9px] text-slate-500">
-            <div className="flex justify-between">
-              <span>ACTIVE ROLE:</span>
-              <span className="text-slate-300 font-bold">EVALUATOR</span>
-            </div>
-            <div className="flex justify-between mt-1">
-              <span>NODE:</span>
-              <span className="text-slate-300 font-bold">NODE-3_ONLINE</span>
-            </div>
-          </div>
-          <p className="text-[9px] text-slate-500 leading-snug">
-            Accreditation ready data pipeline sync status: OK
-          </p>
-        </div>
+
 
       </aside>
     </>

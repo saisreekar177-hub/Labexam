@@ -1063,28 +1063,7 @@ export default function FacultyDashboard() {
                     </div>
                   </div>
 
-                  {/* Live Activity summary */}
-                  <div className="bg-white border border-slate-200 rounded-lg p-4 space-y-3 shadow-2xs">
-                    <h3 className="font-bold text-slate-900 text-xs uppercase tracking-wider">Live Activity Panel</h3>
-                    <div className="space-y-2 bg-slate-50 p-3 rounded border border-slate-150 font-mono text-[10px] text-slate-600">
-                      <div className="flex justify-between">
-                        <span>Active Students:</span>
-                        <span className="text-slate-900 font-bold">{activeTelemetryStudents} candidates</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Ongoing Exams:</span>
-                        <span className="text-slate-900 font-bold">{activeTelemetryRooms}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Recent Submissions:</span>
-                        <span className="text-emerald-700 font-bold">{activeTelemetrySubmissions}</span>
-                      </div>
-                      <div className="flex justify-between border-t border-slate-200/60 pt-1.5 mt-1.5">
-                        <span>Proctor Warnings:</span>
-                        <span className="text-rose-700 font-bold">{activeTelemetryWarnings}</span>
-                      </div>
-                    </div>
-                  </div>
+
 
                 </div>
 
