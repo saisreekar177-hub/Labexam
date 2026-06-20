@@ -15,19 +15,19 @@ const runProcess = (
     let stderr = "";
     let resolved = false;
 
-    // Timeout of 5 seconds to prevent TLE / infinite loops
+    // Timeout of 30 seconds to prevent TLE / infinite loops
     const timer = setTimeout(() => {
       if (!resolved) {
         resolved = true;
         child.kill("SIGKILL");
         resolve({
           stdout,
-          stderr: stderr + "\nTime Limit Exceeded: Execution timed out after 5 seconds.",
+          stderr: stderr + "\nTime Limit Exceeded: Execution timed out after 30 seconds.",
           code: null,
           error: "TLE",
         });
       }
-    }, 5000);
+    }, 30000);
 
     child.stdout.on("data", (data) => {
       stdout += data.toString();

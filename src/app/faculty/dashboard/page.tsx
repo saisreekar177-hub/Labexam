@@ -1422,11 +1422,11 @@ export default function FacultyDashboard() {
 
                     <div className="space-y-1">
                       <label className="block font-bold text-slate-700">Compiler Timeout limits</label>
-                      <select className="w-full text-slate-900 border border-slate-200 rounded-md px-3 py-2 bg-white focus:outline-hidden focus:ring-1 focus:ring-navy-900">
+                      <select defaultValue="30 seconds (Default)" className="w-full text-slate-900 border border-slate-200 rounded-md px-3 py-2 bg-white focus:outline-hidden focus:ring-1 focus:ring-navy-900">
                         <option>2 seconds</option>
-                        <option>5 seconds (Default)</option>
+                        <option>5 seconds</option>
                         <option>10 seconds</option>
-                        <option>30 seconds</option>
+                        <option>30 seconds (Default)</option>
                         <option>60 seconds</option>
                       </select>
                       <p className="text-[10px] text-slate-400">Halts infinite loop solutions automatically.</p>
