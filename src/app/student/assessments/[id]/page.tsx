@@ -127,6 +127,7 @@ export default function AssessmentLaunchPad({ params }: PageProps) {
 
   const [isScheduledDate, setIsScheduledDate] = useState(true);
   const [scheduledDateStr, setScheduledDateStr] = useState("");
+  const [studentCollege, setStudentCollege] = useState("PSG College of Technology");
 
   useEffect(() => {
     const assessments = loadAssessments();
@@ -145,6 +146,9 @@ export default function AssessmentLaunchPad({ params }: PageProps) {
 
       // Check if session exists for this student and this assessment to get assigned subset count
       const studentProfile = loadStudentProfile();
+      if (studentProfile.collegeName) {
+        setStudentCollege(studentProfile.collegeName);
+      }
       const studentRoll = studentProfile.roll || "DEMO_STUDENT";
       const sessions = loadExamSessions();
       const existingSession = sessions.find(s => s.studentRoll === studentRoll && s.assessmentId === id);
@@ -477,7 +481,7 @@ export default function AssessmentLaunchPad({ params }: PageProps) {
               </div>
 
               <div className="bg-slate-50 p-5 rounded-lg border border-slate-200 text-slate-650 leading-relaxed text-[11px] space-y-3">
-                <p className="font-bold text-slate-900">PSG College of Technology - Academic Integrity Consent Pledge:</p>
+                <p className="font-bold text-slate-900">{studentCollege} - Academic Integrity Consent Pledge:</p>
                 
                 <p>
                   1. I declare that all program codes authored during this practical exam session will represent my own individual intellectual work. I will not seek external help, reference unauthorized physical/digital books, or attempt search operations.

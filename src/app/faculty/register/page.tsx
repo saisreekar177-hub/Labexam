@@ -16,7 +16,7 @@ export default function FacultyRegister() {
     employeeId: "",
     email: "",
     mobile: "",
-    collegeName: "PSG College of Technology",
+    collegeName: "",
     department: "CSE",
     designation: "Assistant Professor",
     password: "",

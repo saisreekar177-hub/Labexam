@@ -98,6 +98,7 @@ export async function POST(request: Request) {
         year: student.year,
         section: student.section,
         ip: "192.168.12.104",
+        collegeName: student.collegeName,
       },
     });
   } catch (error: any) {

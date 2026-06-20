@@ -84,6 +84,7 @@ export interface StudentProfile {
   year: string;
   section: string;
   ip: string;
+  collegeName: string;
 }
 
 export interface ReportLog {
@@ -115,7 +116,8 @@ export const DEFAULT_STUDENT_PROFILE: StudentProfile = {
   dept: "",
   year: "",
   section: "",
-  ip: ""
+  ip: "",
+  collegeName: ""
 };
 export const DEFAULT_REPORTS: ReportLog[] = [];
 

@@ -69,6 +69,7 @@ export async function POST(request: Request) {
         year: updatedStudent.year,
         section: updatedStudent.section,
         ip: "192.168.12.104", // Mock IP as in the frontend
+        collegeName: updatedStudent.collegeName,
       },
     });
   } catch (error: any) {

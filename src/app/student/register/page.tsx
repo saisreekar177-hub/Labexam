@@ -16,7 +16,7 @@ export default function StudentRegister() {
     rollNumber: "",
     email: "",
     mobile: "",
-    collegeName: "PSG College of Technology",
+    collegeName: "",
     department: "CSE",
     yearOfStudy: "3",
     section: "A",
