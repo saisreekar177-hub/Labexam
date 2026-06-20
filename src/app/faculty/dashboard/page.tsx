@@ -773,7 +773,7 @@ export default function FacultyDashboard() {
       <div className="flex-1 lg:pl-64 flex flex-col min-h-screen">
         
         {/* Top Navbar Header */}
-        <header className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between sticky top-0 z-30">
+        <header className="no-print bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between sticky top-0 z-30">
           <div className="flex items-center gap-3">
             <button 
               onClick={() => setIsMobileSidebarOpen(true)}

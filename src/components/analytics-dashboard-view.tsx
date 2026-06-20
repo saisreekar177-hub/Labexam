@@ -597,14 +597,14 @@ export default function AnalyticsDashboardView({
           {emptyStateType === "NoStudents" ? (
             <Link 
               href="/faculty/students"
-              className="bg-navy-900 hover:bg-navy-950 text-white font-bold px-4 py-2 rounded-md transition-all shadow-xs text-center"
+              className="bg-navy-900 hover:bg-navy-950 text-white font-bold px-4 py-2 rounded-md transition-all shadow-xs text-center no-print"
             >
               Go to Student Roster
             </Link>
           ) : (
             <Link 
               href="/faculty/assessments"
-              className="bg-navy-900 hover:bg-navy-950 text-white font-bold px-4 py-2 rounded-md transition-all shadow-xs text-center"
+              className="bg-navy-900 hover:bg-navy-950 text-white font-bold px-4 py-2 rounded-md transition-all shadow-xs text-center no-print"
             >
               Go to Assessments Dashboard
             </Link>

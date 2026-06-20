@@ -49,3 +49,31 @@ body {
   @apply absolute left-[-8px] top-1 w-4 h-4 rounded-full border-2 border-white bg-navy-900 shadow-xs;
 }
 
+/* Print Media Styles */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  
+  .print-shadow-none {
+    box-shadow: none !important;
+  }
+  
+  .print-border-none {
+    border: none !important;
+  }
+  
+  .no-print-padding {
+    padding: 0 !important;
+  }
+
+  .lg\:pl-64, [class*="pl-64"] {
+    padding-left: 0 !important;
+  }
+
+  body, html {
+    background-color: #ffffff !important;
+    color: #000000 !important;
+  }
+}
+
