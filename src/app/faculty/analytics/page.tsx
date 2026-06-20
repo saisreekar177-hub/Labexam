@@ -47,7 +47,7 @@ export default function FacultyAnalyticsPage() {
             className="flex items-center gap-4 cursor-pointer hover:bg-slate-50 p-1.5 rounded-lg transition-colors"
           >
             <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded text-[10px] font-bold">
-              PSG Tech Node
+              GITAMW Tech Node
             </span>
             <div className="text-right hidden sm:block border-r border-slate-200 pr-3">
               <p className="font-bold text-slate-800">{faculty.fullName}</p>
