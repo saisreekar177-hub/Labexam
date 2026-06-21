@@ -254,12 +254,7 @@ export function loadFacultyProfile(): FacultyProfile {
     localStorage.setItem(KEYS.FACULTY_PROFILE, JSON.stringify(DEFAULT_FACULTY));
     return DEFAULT_FACULTY;
   }
-  const parsed = JSON.parse(data);
-  if (parsed && parsed.collegeName === "PSG College of Technology") {
-    parsed.collegeName = "GITAMW Tech Node";
-    localStorage.setItem(KEYS.FACULTY_PROFILE, JSON.stringify(parsed));
-  }
-  return parsed;
+  return JSON.parse(data);
 }
 
 export function saveFacultyProfile(profile: FacultyProfile): void {
@@ -274,12 +269,7 @@ export function loadStudentProfile(): StudentProfile {
     localStorage.setItem(KEYS.STUDENT_PROFILE, JSON.stringify(DEFAULT_STUDENT_PROFILE));
     return DEFAULT_STUDENT_PROFILE;
   }
-  const parsed = JSON.parse(data);
-  if (parsed && parsed.collegeName === "PSG College of Technology") {
-    parsed.collegeName = "GITAMW Tech Node";
-    localStorage.setItem(KEYS.STUDENT_PROFILE, JSON.stringify(parsed));
-  }
-  return parsed;
+  return JSON.parse(data);
 }
 
 export function saveStudentProfile(profile: StudentProfile): void {
