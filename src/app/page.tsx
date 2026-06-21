@@ -27,7 +27,6 @@ import {
 } from "lucide-react";
 
 import Navigation from "@/components/navigation";
-import DashboardMockup from "@/components/dashboard-mockup";
 import StudentExperienceMockup from "@/components/student-experience-mockup";
 import FAQAccordion from "@/components/faq-accordion";
 import DemoModal from "@/components/demo-modal";
@@ -438,68 +437,7 @@ export default function Home() {
           </div>
         </section>
 
-        {/* SECTION 5: FACULTY DASHBOARD SHOWCASE */}
-        <section className="py-20 bg-slate-50/50 border-b border-slate-200/60">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
-              
-              {/* Showcase visual */}
-              <div className="lg:col-span-7 order-2 lg:order-1">
-                <div className="bg-white p-3 border border-slate-200 rounded-xl shadow-md">
-                  <DashboardMockup />
-                </div>
-              </div>
 
-              {/* Showcase description */}
-              <div className="lg:col-span-5 space-y-6 order-1 lg:order-2">
-                <span className="text-[10px] font-bold text-navy-800 tracking-widest uppercase font-mono">Control Room</span>
-                <h2 className="text-2xl md:text-3xl font-extrabold text-slate-950 tracking-tight">
-                  Central Command for Exam Coordinators
-                </h2>
-                <p className="text-xs md:text-sm text-slate-600 leading-relaxed">
-                  A high-fidelity dashboard built for college coordinators to oversee ongoing lab sessions. Review auto-graded metrics and maintain proctor surveillance logs without manual supervision.
-                </p>
-
-                {/* Callouts */}
-                <div className="space-y-4">
-                  <div className="flex gap-3">
-                    <div className="w-5 h-5 bg-navy-50 text-navy-900 border border-navy-100 rounded flex items-center justify-center shrink-0 text-[10px] font-bold">1</div>
-                    <div>
-                      <h4 className="font-bold text-xs text-slate-900">Active Assessments Tracking</h4>
-                      <p className="text-[11px] text-slate-500 leading-snug">Toggle between multiple active rooms (e.g. CSE-A, IT-B) and monitor completion statistics.</p>
-                    </div>
-                  </div>
-
-                  <div className="flex gap-3">
-                    <div className="w-5 h-5 bg-navy-50 text-navy-900 border border-navy-100 rounded flex items-center justify-center shrink-0 text-[10px] font-bold">2</div>
-                    <div>
-                      <h4 className="font-bold text-xs text-slate-900">Live Student Security Telemetry</h4>
-                      <p className="text-[11px] text-slate-500 leading-snug">Get real-time browser warning alerts when users trigger tab change violations during the exam.</p>
-                    </div>
-                  </div>
-
-                  <div className="flex gap-3">
-                    <div className="w-5 h-5 bg-navy-50 text-navy-900 border border-navy-100 rounded flex items-center justify-center shrink-0 text-[10px] font-bold">3</div>
-                    <div>
-                      <h4 className="font-bold text-xs text-slate-900">Central Question bank & Outcomes</h4>
-                      <p className="text-[11px] text-slate-500 leading-snug">Easily reuse previous lab sheets and auto-generate reports detailing outcome gap analysis.</p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="pt-4">
-                  <button 
-                    onClick={openDemoModal}
-                    className="bg-navy-900 hover:bg-navy-950 text-white font-bold text-xs px-5 py-2.5 rounded-md transition-all focus-ring"
-                  >
-                    Explore Faculty Sandbox
-                  </button>
-                </div>
-              </div>
-
-            </div>
-          </div>
-        </section>
 
         {/* SECTION 6: STUDENT EXPERIENCE */}
         <section id="experience" className="py-20 bg-slate-950 text-white border-b border-slate-900">
