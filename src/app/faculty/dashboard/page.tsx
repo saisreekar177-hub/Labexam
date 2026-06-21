@@ -463,12 +463,12 @@ export default function FacultyDashboard() {
   const activeTelemetryWarnings = activeExamsCount > 0 ? "6 incidents flagged" : "0 incidents flagged";
   
   const [faculty, setFaculty] = useState<FacultyProfile>({
-    fullName: "Dr. Ramesh Sharma",
-    department: "CSE",
-    designation: "Professor & HOD",
-    employeeId: "FAC_102",
-    email: "rama@psgtech.edu",
-    collegeName: "PSG College of Technology"
+    fullName: "",
+    department: "",
+    designation: "",
+    employeeId: "",
+    email: "",
+    collegeName: ""
   });
 
   // Load from local storage inside mount effect
@@ -794,7 +794,7 @@ export default function FacultyDashboard() {
               className="flex items-center gap-4 cursor-pointer hover:bg-slate-50 p-1.5 rounded-lg transition-colors"
             >
               <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded text-[10px] font-bold">
-                GITAMW Tech Node
+                {faculty.collegeName || "LAB EXAM"}
               </span>
               <div className="text-right hidden sm:block border-r border-slate-200 pr-3">
                 <p className="font-bold text-slate-800">{faculty.fullName}</p>
@@ -826,7 +826,7 @@ export default function FacultyDashboard() {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-slate-450">Institution:</span>
-                    <span className="text-slate-800 font-medium">{faculty.collegeName || "PSG College of Technology"}</span>
+                    <span className="text-slate-800 font-medium">{faculty.collegeName || "LAB EXAM"}</span>
                   </div>
                 </div>
                 <div className="border-t border-slate-150 pt-2 flex justify-end">

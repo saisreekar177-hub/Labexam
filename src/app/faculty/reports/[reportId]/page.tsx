@@ -49,10 +49,10 @@ export default function ReportDetailsPage({ params }: PageProps) {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [examSessions, setExamSessions] = useState<ExamSession[]>([]);
   const [faculty, setFaculty] = useState({
-    fullName: "Dr. Ramesh Sharma",
-    department: "CSE",
-    designation: "Professor & HOD",
-    collegeName: "PSG College of Technology"
+    fullName: "",
+    department: "",
+    designation: "",
+    collegeName: ""
   });
 
   const [isLoading, setIsLoading] = useState(true);
@@ -482,7 +482,7 @@ export default function ReportDetailsPage({ params }: PageProps) {
                 </div>
                 <div>
                   <h2 className="font-extrabold text-sm tracking-tight text-slate-950 uppercase leading-snug">
-                    {(faculty.collegeName || "PSG College of Technology").toUpperCase()}
+                    {(faculty.collegeName || "LAB EXAM").toUpperCase()}
                   </h2>
                   <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">
                     Department of {faculty.department}
