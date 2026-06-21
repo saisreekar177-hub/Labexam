@@ -767,7 +767,7 @@ export default function ProctorControlRoom({ params }: PageProps) {
             <div className="flex justify-between items-start border-b border-slate-200 pb-4">
               <div>
                 <h3 className="text-slate-950 font-extrabold text-xs">{selectedStudent.name}</h3>
-                <p className="text-[10px] text-slate-400 font-mono font-bold mt-0.5">PSG Terminal Node • Roll: {selectedStudent.roll}</p>
+                <p className="text-[10px] text-slate-400 font-mono font-bold mt-0.5">Gouthami Terminal Node • Roll: {selectedStudent.roll}</p>
               </div>
               <button 
                 onClick={() => setSelectedStudent(null)}
@@ -783,7 +783,7 @@ export default function ProctorControlRoom({ params }: PageProps) {
               <div className="space-y-2 leading-relaxed">
                 <div className="flex justify-between">
                   <span className="text-slate-500 font-semibold">Official Email:</span>
-                  <span className="font-bold text-slate-900 font-mono">{selectedStudent.roll.toLowerCase()}@psg.edu</span>
+                  <span className="font-bold text-slate-900 font-mono">{selectedStudent.roll.toLowerCase()}@gouthamitmw.edu</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-slate-500 font-semibold">Terminal IP Node:</span>

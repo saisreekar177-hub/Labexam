@@ -254,7 +254,16 @@ export function loadFacultyProfile(): FacultyProfile {
     localStorage.setItem(KEYS.FACULTY_PROFILE, JSON.stringify(DEFAULT_FACULTY));
     return DEFAULT_FACULTY;
   }
-  return JSON.parse(data);
+  try {
+    const profile = JSON.parse(data);
+    if (!profile.collegeName || profile.collegeName === "GITAMW Tech Node" || profile.collegeName === "PSG College of Technology" || profile.collegeName.toLowerCase().includes("gowthami") || profile.collegeName.toLowerCase().includes("gouthami")) {
+      profile.collegeName = "Gouthami Institute of Technology and Management for Women";
+      localStorage.setItem(KEYS.FACULTY_PROFILE, JSON.stringify(profile));
+    }
+    return profile;
+  } catch (e) {
+    return DEFAULT_FACULTY;
+  }
 }
 
 export function saveFacultyProfile(profile: FacultyProfile): void {
@@ -269,7 +278,16 @@ export function loadStudentProfile(): StudentProfile {
     localStorage.setItem(KEYS.STUDENT_PROFILE, JSON.stringify(DEFAULT_STUDENT_PROFILE));
     return DEFAULT_STUDENT_PROFILE;
   }
-  return JSON.parse(data);
+  try {
+    const profile = JSON.parse(data);
+    if (!profile.collegeName || profile.collegeName === "GITAMW Tech Node" || profile.collegeName === "PSG College of Technology" || profile.collegeName.toLowerCase().includes("gowthami") || profile.collegeName.toLowerCase().includes("gouthami")) {
+      profile.collegeName = "Gouthami Institute of Technology and Management for Women";
+      localStorage.setItem(KEYS.STUDENT_PROFILE, JSON.stringify(profile));
+    }
+    return profile;
+  } catch (e) {
+    return DEFAULT_STUDENT_PROFILE;
+  }
 }
 
 export function saveStudentProfile(profile: StudentProfile): void {

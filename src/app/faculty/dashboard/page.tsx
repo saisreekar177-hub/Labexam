@@ -111,6 +111,8 @@ export default function FacultyDashboard() {
       estimatedTime: number;
       allowedLanguages: string[];
       status: "Active" | "Archived";
+      sampleInput: string;
+      sampleOutput: string;
     };
     errors: string[];
     isValid: boolean;
@@ -196,6 +198,11 @@ export default function FacultyDashboard() {
     const timeIdx = rawHeaders.indexOf("estimated completion time");
     const langIdx = rawHeaders.indexOf("allowed programming languages");
     const statusIdx = rawHeaders.indexOf("question status");
+    const sampleInputIdx = rawHeaders.indexOf("sample input");
+    let expectedOutcomeIdx = rawHeaders.indexOf("expected outcome");
+    if (expectedOutcomeIdx === -1) {
+      expectedOutcomeIdx = rawHeaders.indexOf("expected output");
+    }
 
     const results: ParsedRow[] = [];
     
@@ -212,6 +219,8 @@ export default function FacultyDashboard() {
       const timeRaw = timeIdx !== -1 && line[timeIdx] ? line[timeIdx].trim() : "";
       const langRaw = langIdx !== -1 && line[langIdx] ? line[langIdx].trim() : "";
       const statusRaw = statusIdx !== -1 && line[statusIdx] ? line[statusIdx].trim() : "";
+      const sampleInput = sampleInputIdx !== -1 && line[sampleInputIdx] ? line[sampleInputIdx].trim() : "";
+      const sampleOutput = expectedOutcomeIdx !== -1 && line[expectedOutcomeIdx] ? line[expectedOutcomeIdx].trim() : "";
       
       if (!title) {
         errors.push("Question Title is required and cannot be empty.");
@@ -297,7 +306,9 @@ export default function FacultyDashboard() {
           marks,
           estimatedTime,
           allowedLanguages,
-          status
+          status,
+          sampleInput,
+          sampleOutput
         },
         errors,
         isValid: errors.length === 0
@@ -339,11 +350,11 @@ export default function FacultyDashboard() {
 
   const handleDownloadSample = () => {
     const csvContent = [
-      "Question Title,Course Subject,Difficulty Rating,Question Description,Maximum Marks,Estimated Completion Time,Allowed Programming Languages,Question Status",
-      'Invert a Binary Tree,Data Structures,Medium,"Given the root of a binary tree, invert the tree (swap left and right subtrees of every node) and return its root.",15,30,"C++, Java, Python",Active',
-      'Fibonacci Sequence,Recursion,Easy,"Write a recursive function to compute the Nth Fibonacci number.",10,15,"Python, Java, C++",Active',
-      'Validate Binary Search Tree,Data Structures,Medium,"Given the root of a binary tree, determine if it is a valid binary search tree (BST).",15,25,"Java, Python",Active',
-      'Implement Dijkstra Shortest Path,Algorithms,Hard,"Given a weighted graph, find the shortest path from a source vertex S to all other vertices.",20,45,"C++, Java",Active'
+      "Question Title,Course Subject,Difficulty Rating,Question Description,Maximum Marks,Estimated Completion Time,Allowed Programming Languages,Question Status,Sample Input,Expected Outcome",
+      'Invert a Binary Tree,Data Structures,Medium,"Given the root of a binary tree, invert the tree (swap left and right subtrees of every node) and return its root.",15,30,"C++, Java, Python",Active,"[4,2,7,1,3,6,9]","[4,7,2,9,6,3,1]"',
+      'Fibonacci Sequence,Recursion,Easy,"Write a recursive function to compute the Nth Fibonacci number.",10,15,"Python, Java, C++",Active,"5","5"',
+      'Validate Binary Search Tree,Data Structures,Medium,"Given the root of a binary tree, determine if it is a valid binary search tree (BST).",15,25,"Java, Python",Active,"[2,1,3]","true"',
+      'Implement Dijkstra Shortest Path,Algorithms,Hard,"Given a weighted graph, find the shortest path from a source vertex S to all other vertices.",20,45,"C++, Java",Active,"4\n0 1 1\n0 2 4\n1 2 2\n1 3 6","0 1 3 7"'
     ].join("\n");
     
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
@@ -362,7 +373,7 @@ export default function FacultyDashboard() {
     const invalid = parsedRows.filter(r => !r.isValid);
     if (invalid.length === 0) return;
     
-    const csvHeaders = "Row,Question Title,Course Subject,Difficulty Rating,Question Description,Maximum Marks,Estimated Completion Time,Allowed Programming Languages,Question Status,Errors\n";
+    const csvHeaders = "Row,Question Title,Course Subject,Difficulty Rating,Question Description,Maximum Marks,Estimated Completion Time,Allowed Programming Languages,Question Status,Sample Input,Expected Outcome,Errors\n";
     const csvContent = invalid.map(r => {
       const titleEscaped = `"${(r.data.title || "").replace(/"/g, '""')}"`;
       const subjectEscaped = `"${(r.data.subject || "").replace(/"/g, '""')}"`;
@@ -372,8 +383,10 @@ export default function FacultyDashboard() {
       const timeEscaped = r.data.estimatedTime || "";
       const langEscaped = `"${(r.data.allowedLanguages || []).join(", ").replace(/"/g, '""')}"`;
       const statusEscaped = `"${(r.data.status || "").replace(/"/g, '""')}"`;
+      const sampleInputEscaped = `"${(r.data.sampleInput || "").replace(/"/g, '""')}"`;
+      const sampleOutputEscaped = `"${(r.data.sampleOutput || "").replace(/"/g, '""')}"`;
       const errorsEscaped = `"${r.errors.join("; ").replace(/"/g, '""')}"`;
-      return `${r.rowNum},${titleEscaped},${subjectEscaped},${diffEscaped},${descEscaped},${marksEscaped},${timeEscaped},${langEscaped},${statusEscaped},${errorsEscaped}`;
+      return `${r.rowNum},${titleEscaped},${subjectEscaped},${diffEscaped},${descEscaped},${marksEscaped},${timeEscaped},${langEscaped},${statusEscaped},${sampleInputEscaped},${sampleOutputEscaped},${errorsEscaped}`;
     }).join("\n");
     
     const blob = new Blob([csvHeaders + csvContent], { type: "text/csv;charset=utf-8;" });
@@ -414,7 +427,9 @@ export default function FacultyDashboard() {
       tags: [row.data.subject, row.data.difficulty],
       description: row.data.description,
       estimatedTime: row.data.estimatedTime,
-      allowedLanguages: row.data.allowedLanguages
+      allowedLanguages: row.data.allowedLanguages,
+      sampleInput: row.data.sampleInput,
+      sampleOutput: row.data.sampleOutput
     }));
     
     const updated = [...newQuestions, ...loadQuestions()];
@@ -794,7 +809,7 @@ export default function FacultyDashboard() {
               className="flex items-center gap-4 cursor-pointer hover:bg-slate-50 p-1.5 rounded-lg transition-colors"
             >
               <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded text-[10px] font-bold">
-                {faculty.collegeName || "GITAMW Tech Node"}
+                {faculty.collegeName || "Gouthami Institute of Technology and Management for Women"}
               </span>
               <div className="text-right hidden sm:block border-r border-slate-200 pr-3">
                 <p className="font-bold text-slate-800">{faculty.fullName}</p>
@@ -826,7 +841,7 @@ export default function FacultyDashboard() {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-slate-455">Institution:</span>
-                    <span className="text-slate-800 font-medium">{faculty.collegeName || "GITAMW Tech Node"}</span>
+                    <span className="text-slate-800 font-medium">{faculty.collegeName || "Gouthami Institute of Technology and Management for Women"}</span>
                   </div>
                 </div>
                 <div className="border-t border-slate-150 pt-2 flex justify-end">
@@ -1950,10 +1965,10 @@ export default function FacultyDashboard() {
                     )}
 
                     {/* Template details */}
-                    <div className="bg-slate-50 p-3 rounded border border-slate-150 space-y-2.5 text-[10px] text-slate-650">
+                    <div className="bg-slate-50 p-3 rounded border border-slate-150 space-y-2.5 text-[10px] text-slate-655">
                       <p className="font-bold text-slate-800 uppercase tracking-wider text-[9px]">Required Columns Schema:</p>
                       <div className="bg-slate-100 p-2 rounded border border-slate-250 font-mono text-[8.5px] text-slate-600 break-words leading-relaxed">
-                        Question Title, Course Subject, Difficulty Rating, Question Description, Maximum Marks, Estimated Completion Time, Allowed Programming Languages, Question Status
+                        Question Title, Course Subject, Difficulty Rating, Question Description, Maximum Marks, Estimated Completion Time, Allowed Programming Languages, Question Status, Sample Input, Expected Outcome
                       </div>
                       
                       <button 

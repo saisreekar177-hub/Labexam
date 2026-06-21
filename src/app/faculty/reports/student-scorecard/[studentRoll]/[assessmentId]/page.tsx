@@ -183,7 +183,7 @@ export default function StudentScorecardReportPage({ params }: PageProps) {
       id: "demo-stud-id",
       roll: studentRoll || "CANDIDATE",
       name: "Student Candidate",
-      email: `${(studentRoll || "student").toLowerCase()}@gitamw.edu`,
+      email: `${(studentRoll || "student").toLowerCase()}@gouthamitmw.edu`,
       dept: "B.Tech CSE",
       year: "3rd Year",
       section: "A",
@@ -221,7 +221,7 @@ export default function StudentScorecardReportPage({ params }: PageProps) {
 
     // 4. Set faculty and questions
     setFaculty({
-      collegeName: facultyProfile.collegeName || "GITAMW Tech Node",
+      collegeName: facultyProfile.collegeName || "Gouthami Institute of Technology and Management for Women",
       department: facultyProfile.department || "CSE",
       fullName: facultyProfile.fullName || "Dr. Ramesh Sharma"
     });
@@ -230,37 +230,14 @@ export default function StudentScorecardReportPage({ params }: PageProps) {
     setIsLoading(false);
   }, [studentRoll, assessmentId]);
 
-  const metrics = React.useMemo(() => {
+  const studentData = React.useMemo(() => {
     if (!student || !assessment || !session) return null;
 
-    // General deterministic fallback based on student name hash
     const isSuspended = student.status === "Suspended";
     const hash = student.name.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
-    const marks = isSuspended ? 0 : Math.round(15 + (hash % 35)); // 15 to 50
-    const attempted = isSuspended ? 0 : Math.round(1 + (hash % 4)); // 1 to 5
-    const minutes = Math.round(5 + (hash % 50));
-    const seconds = Math.round(hash % 60);
-    const timeTaken = `${minutes} min ${seconds} sec`;
+    const baseMarks = isSuspended ? 0 : Math.round(15 + (hash % 35)); // 15 to 50
+    const rawAttempted = isSuspended ? 0 : Math.round(1 + (hash % 4)); // 1 to 5
 
-    const subTimeRaw = session.submittedAt ? new Date(session.submittedAt) : new Date();
-    const submissionTime = formatDate(subTimeRaw);
-
-    return {
-      roll: student.roll,
-      name: student.name,
-      dept: student.dept || "B.Tech CSE",
-      status: marks >= 25 ? "PASS" : "FAIL",
-      marks,
-      attempted,
-      totalQuestions: 5,
-      timeTaken,
-      submissionTime
-    };
-  }, [student, assessment, session]);
-
-  const questionOutcomes = React.useMemo(() => {
-    if (!session || !metrics) return [];
-    
     let questionIds: string[] = [];
     try {
       questionIds = JSON.parse(session.questionOrder);
@@ -280,46 +257,91 @@ export default function StudentScorecardReportPage({ params }: PageProps) {
       };
     });
 
-    // General dynamic distribution
-    let remaining = metrics.marks;
-    const hash = metrics.name.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    let remaining = baseMarks;
+    let correctCount = 0;
+    resolved.forEach((q, idx) => {
+      const qMarks = q.marks || 10;
+      const shouldSkip = (idx === 1 && hash % 2 === 0 && remaining >= qMarks && idx < resolved.length - 1);
+      if (remaining >= qMarks && !shouldSkip) {
+        remaining -= qMarks;
+        correctCount++;
+      } else if (remaining >= qMarks && idx === resolved.length - 1) {
+        remaining -= qMarks;
+        correctCount++;
+      }
+    });
 
-    return resolved.map((q, idx) => {
+    const attempted = isSuspended ? 0 : Math.max(rawAttempted, correctCount);
+
+    remaining = baseMarks;
+    let computedMarks = 0;
+    const outcomes = resolved.map((q, idx) => {
       const qMarks = q.marks || 10;
       const shouldSkip = (idx === 1 && hash % 2 === 0 && remaining >= qMarks && idx < resolved.length - 1);
       
-      let attempted = "No";
+      let attemptedStatus = "No";
       let result = "N/A";
-      let marks = 0;
+      let marksAllocated = 0;
 
       if (remaining >= qMarks && !shouldSkip) {
         remaining -= qMarks;
-        attempted = "Yes";
+        attemptedStatus = "Yes";
         result = "Correct";
-        marks = qMarks;
+        marksAllocated = qMarks;
+        computedMarks += qMarks;
       } else if (remaining >= qMarks && idx === resolved.length - 1) {
         remaining -= qMarks;
-        attempted = "Yes";
+        attemptedStatus = "Yes";
         result = "Correct";
-        marks = qMarks;
+        marksAllocated = qMarks;
+        computedMarks += qMarks;
+      } else if (idx < attempted) {
+        attemptedStatus = "Yes";
+        result = "Incorrect";
+        marksAllocated = 0;
       }
 
       let submittedCode = "";
-      if (attempted === "Yes") {
-        const key = `examcoder_code_${metrics.roll}_${assessmentId}_${q.id}`;
+      if (attemptedStatus === "Yes") {
+        const key = `examcoder_code_${student.roll}_${assessmentId}_${q.id}`;
         submittedCode = (typeof window !== "undefined" && window.localStorage.getItem(key)) || getCodeLogic(q.id || "", q.title || "");
       }
 
       return {
         id: q.id,
         title: q.title,
-        attempted,
+        attempted: attemptedStatus,
         result,
-        marks,
+        marks: marksAllocated,
         submittedCode
       };
     });
-  }, [session, metrics, allQuestions, assessmentId]);
+
+    const subTimeRaw = session.submittedAt ? new Date(session.submittedAt) : new Date();
+    const submissionTime = formatDate(subTimeRaw);
+
+    const minutes = Math.round(5 + (hash % 50));
+    const seconds = Math.round(hash % 60);
+    const timeTaken = `${minutes} min ${seconds} sec`;
+
+    return {
+      metrics: {
+        roll: student.roll,
+        name: student.name,
+        dept: student.dept || "B.Tech CSE",
+        status: computedMarks >= 25 ? "PASS" : "FAIL",
+        marks: computedMarks,
+        attempted,
+        totalQuestions: resolved.length,
+        timeTaken,
+        submissionTime
+      },
+      questionOutcomes: outcomes
+    };
+  }, [student, assessment, session, allQuestions, assessmentId]);
+
+  const metrics = studentData?.metrics || null;
+  const questionOutcomes = studentData?.questionOutcomes || [];
 
   const handlePrint = () => {
     const originalTitle = document.title;

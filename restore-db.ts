@@ -16,7 +16,7 @@ async function main() {
       employeeId: "FAC1234"
     },
     data: {
-      collegeName: "PSG College of Technology"
+      collegeName: "Gouthami Institute of Technology and Management for Women"
     }
   });
   console.log(`RESTORED ${result.count} FACULTY RECORDS IN DATABASE.`);

@@ -647,7 +647,7 @@ export default function ReportsDashboardView({ isStandalone = false }: ReportsDa
                   type="text"
                   value={scheduleForm.emailList}
                   onChange={(e) => setScheduleForm({ ...scheduleForm, emailList: e.target.value })}
-                  placeholder="e.g. hod.cse@psg.edu, principal@psg.edu"
+                  placeholder="e.g. hod.cse@gouthamitmw.edu, principal@gouthamitmw.edu"
                   className="w-full text-slate-900 border border-slate-250 rounded-md px-3 py-2 focus:outline-hidden"
                 />
               </div>

@@ -621,34 +621,7 @@ export default function ReportDetailsPage({ params }: PageProps) {
         {report.category ? (
           <div className="w-full max-w-[800px] space-y-8">
             {studentsWithScores.map((studentItem, idx) => {
-              // 1. Resolve student metrics
-              const metrics = (() => {
-                const isSuspended = studentItem.status === "Suspended";
-                const hash = studentItem.name.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
-                const marks = isSuspended ? 0 : (studentItem.score !== null ? studentItem.score : Math.round(15 + (hash % 35)));
-                const attempted = isSuspended ? 0 : Math.round(1 + (hash % 4));
-                const minutes = Math.round(5 + (hash % 50));
-                const seconds = Math.round(hash % 60);
-                const timeTaken = `${minutes} min ${seconds} sec`;
-
-                const session = examSessions.find(es => es.studentRoll === studentItem.roll && es.assessmentId === (assessments[0]?.id || "1"));
-                const subTimeRaw = session?.submittedAt ? new Date(session.submittedAt) : new Date();
-                const submissionTime = formatDate(subTimeRaw);
-
-                return {
-                  roll: studentItem.roll,
-                  name: studentItem.name,
-                  dept: studentItem.dept || "B.Tech CSE",
-                  status: marks >= 25 ? "PASS" : "FAIL",
-                  marks,
-                  attempted,
-                  totalQuestions: 5,
-                  timeTaken,
-                  submissionTime
-                };
-              })();
-
-              // 2. Resolve exam session questions
+              // 1. Resolve exam session questions
               const session = examSessions.find(es => es.studentRoll === studentItem.roll && es.assessmentId === (assessments[0]?.id || "1"));
               let questionIds: string[] = [];
               try {
@@ -669,40 +642,83 @@ export default function ReportDetailsPage({ params }: PageProps) {
                 };
               });
 
-              // 3. Distribute question outcomes
-              const questionOutcomes = (() => {
-                let remaining = metrics.marks;
-                const hash = metrics.name.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
+              // 2. Calculate student outcomes and metrics in a single pass
+              const isSuspended = studentItem.status === "Suspended";
+              const hash = studentItem.name.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
+              const baseMarks = isSuspended ? 0 : (studentItem.score !== null ? studentItem.score : Math.round(15 + (hash % 35)));
+              const rawAttempted = isSuspended ? 0 : Math.round(1 + (hash % 4));
 
-                return resolved.map((q, idx) => {
-                  const qMarks = q.marks || 10;
-                  const shouldSkip = (idx === 1 && hash % 2 === 0 && remaining >= qMarks && idx < resolved.length - 1);
-                  
-                  let attempted = "No";
-                  let result = "N/A";
-                  let marks = 0;
+              let remaining = baseMarks;
+              let correctCount = 0;
+              resolved.forEach((q, idx) => {
+                const qMarks = q.marks || 10;
+                const shouldSkip = (idx === 1 && hash % 2 === 0 && remaining >= qMarks && idx < resolved.length - 1);
+                if (remaining >= qMarks && !shouldSkip) {
+                  remaining -= qMarks;
+                  correctCount++;
+                } else if (remaining >= qMarks && idx === resolved.length - 1) {
+                  remaining -= qMarks;
+                  correctCount++;
+                }
+              });
 
-                  if (remaining >= qMarks && !shouldSkip) {
-                    remaining -= qMarks;
-                    attempted = "Yes";
-                    result = "Correct";
-                    marks = qMarks;
-                  } else if (remaining >= qMarks && idx === resolved.length - 1) {
-                    remaining -= qMarks;
-                    attempted = "Yes";
-                    result = "Correct";
-                    marks = qMarks;
-                  }
+              const attempted = isSuspended ? 0 : Math.max(rawAttempted, correctCount);
 
-                  let submittedCode = "";
-                  if (attempted === "Yes") {
-                    const key = `examcoder_code_${metrics.roll}_${assessments[0]?.id || "1"}_${q.id}`;
-                    submittedCode = (typeof window !== "undefined" && window.localStorage.getItem(key)) || getCodeLogic(q.id || "", q.title || "");
-                  }
+              remaining = baseMarks;
+              let computedMarks = 0;
+              const questionOutcomes = resolved.map((q, idx) => {
+                const qMarks = q.marks || 10;
+                const shouldSkip = (idx === 1 && hash % 2 === 0 && remaining >= qMarks && idx < resolved.length - 1);
+                
+                let attemptedStatus = "No";
+                let result = "N/A";
+                let marksAllocated = 0;
 
-                  return { id: q.id, title: q.title, attempted, result, marks, submittedCode };
-                });
-              })();
+                if (remaining >= qMarks && !shouldSkip) {
+                  remaining -= qMarks;
+                  attemptedStatus = "Yes";
+                  result = "Correct";
+                  marksAllocated = qMarks;
+                  computedMarks += qMarks;
+                } else if (remaining >= qMarks && idx === resolved.length - 1) {
+                  remaining -= qMarks;
+                  attemptedStatus = "Yes";
+                  result = "Correct";
+                  marksAllocated = qMarks;
+                  computedMarks += qMarks;
+                } else if (idx < attempted) {
+                  attemptedStatus = "Yes";
+                  result = "Incorrect";
+                  marksAllocated = 0;
+                }
+
+                let submittedCode = "";
+                if (attemptedStatus === "Yes") {
+                  const key = `examcoder_code_${studentItem.roll}_${assessments[0]?.id || "1"}_${q.id}`;
+                  submittedCode = (typeof window !== "undefined" && window.localStorage.getItem(key)) || getCodeLogic(q.id || "", q.title || "");
+                }
+
+                return { id: q.id, title: q.title, attempted: attemptedStatus, result, marks: marksAllocated, submittedCode };
+              });
+
+              const subTimeRaw = session?.submittedAt ? new Date(session.submittedAt) : new Date();
+              const submissionTime = formatDate(subTimeRaw);
+
+              const minutes = Math.round(5 + (hash % 50));
+              const seconds = Math.round(hash % 60);
+              const timeTaken = `${minutes} min ${seconds} sec`;
+
+              const metrics = {
+                roll: studentItem.roll,
+                name: studentItem.name,
+                dept: studentItem.dept || "B.Tech CSE",
+                status: computedMarks >= 25 ? "PASS" : "FAIL",
+                marks: computedMarks,
+                attempted,
+                totalQuestions: resolved.length,
+                timeTaken,
+                submissionTime
+              };
 
               return (
                 <div key={studentItem.id} className="bg-white w-full p-8 md:p-12 border border-slate-200 shadow-lg print-shadow-none print-border-none flex flex-col justify-between min-h-[1050px] text-slate-900 scorecard-page">
@@ -710,7 +726,7 @@ export default function ReportDetailsPage({ params }: PageProps) {
                     {/* Header */}
                     <div className="text-center space-y-1">
                       <h2 className="font-extrabold text-sm tracking-tight text-slate-900 uppercase leading-snug">
-                        {faculty.collegeName || "GITAMW Tech Node"}
+                        {faculty.collegeName || "Gouthami Institute of Technology and Management for Women"}
                       </h2>
                       <p className="text-[10px] text-slate-700 font-medium">
                         {assessments[0]?.name || "Python Lab Assessment"} – Individual Report
@@ -836,7 +852,7 @@ export default function ReportDetailsPage({ params }: PageProps) {
                   </div>
                   <div>
                     <h2 className="font-extrabold text-sm tracking-tight text-slate-955 uppercase leading-snug">
-                      {(faculty.collegeName || "GITAMW Tech Node").toUpperCase()}
+                      {(faculty.collegeName || "Gouthami Institute of Technology and Management for Women").toUpperCase()}
                     </h2>
                     <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">
                       Department of {faculty.department}

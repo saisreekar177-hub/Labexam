@@ -30,8 +30,8 @@ export default function AddStudent() {
     const cleanRoll = rollNumber.trim().toUpperCase();
     if (cleanRoll) {
       setUsername(cleanRoll.toLowerCase());
-      setTempPassword(`PSG@${cleanRoll}`);
-      setEmail(`${cleanRoll.toLowerCase()}@psg.edu`);
+      setTempPassword(`Gouthami@${cleanRoll}`);
+      setEmail(`${cleanRoll.toLowerCase()}@gouthamitmw.edu`);
     } else {
       setUsername("");
       setTempPassword("");

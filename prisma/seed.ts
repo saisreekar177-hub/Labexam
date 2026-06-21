@@ -38,9 +38,9 @@ async function main() {
     create: {
       employeeId: "FAC_102",
       fullName: "Dr. Ramesh Sharma",
-      email: "ramesh.sharma@psg.edu",
+      email: "ramesh.sharma@gouthamitmw.edu",
       mobile: "9876543210",
-      collegeName: "PSG College of Technology",
+      collegeName: "Gouthami Institute of Technology and Management for Women",
       department: "CSE",
       designation: "Professor & HOD",
       password: defaultPasswordHash,
@@ -50,11 +50,11 @@ async function main() {
 
   // 3. Seed Students
   const students = [
-    { roll: "22CSE102", name: "Aditya Verma", email: "aditya.22cse@psg.edu", dept: "CSE", year: "3rd Year", section: "A" },
-    { roll: "22CSE104", name: "Aravind Swaminathan", email: "aravind.22cse@psg.edu", dept: "CSE", year: "3rd Year", section: "A" },
-    { roll: "22CSE156", name: "Pooja Hegde", email: "pooja.22cse@psg.edu", dept: "CSE", year: "3rd Year", section: "B" },
-    { roll: "22ECE012", name: "Anjali Rao", email: "anjali.22ece@psg.edu", dept: "ECE", year: "2nd Year", section: "A" },
-    { roll: "22EEE045", name: "Vijay Krishnan", email: "vijay.22eee@psg.edu", dept: "EEE", year: "4th Year", section: "C" },
+    { roll: "22CSE102", name: "Aditya Verma", email: "aditya.22cse@gouthamitmw.edu", dept: "CSE", year: "3rd Year", section: "A" },
+    { roll: "22CSE104", name: "Aravind Swaminathan", email: "aravind.22cse@gouthamitmw.edu", dept: "CSE", year: "3rd Year", section: "A" },
+    { roll: "22CSE156", name: "Pooja Hegde", email: "pooja.22cse@gouthamitmw.edu", dept: "CSE", year: "3rd Year", section: "B" },
+    { roll: "22ECE012", name: "Anjali Rao", email: "anjali.22ece@gouthamitmw.edu", dept: "ECE", year: "2nd Year", section: "A" },
+    { roll: "22EEE045", name: "Vijay Krishnan", email: "vijay.22eee@gouthamitmw.edu", dept: "EEE", year: "4th Year", section: "C" },
   ];
 
   for (const student of students) {
@@ -66,7 +66,7 @@ async function main() {
         name: student.name,
         email: student.email,
         mobile: "9876543210",
-        collegeName: "PSG College of Technology",
+        collegeName: "Gouthami Institute of Technology and Management for Women",
         dept: student.dept,
         year: student.year,
         section: student.section,

@@ -34,7 +34,7 @@ export default function DashboardMockup({ collegeName }: DashboardMockupProps) {
   const [assessments, setAssessments] = useState<any[]>([]);
   const [students, setStudents] = useState<any[]>([]);
 
-  const [facultyCollege, setFacultyCollege] = useState(collegeName || "GITAMW Tech Node");
+  const [facultyCollege, setFacultyCollege] = useState(collegeName || "Gouthami Institute of Technology and Management for Women");
 
   useEffect(() => {
     if (typeof window !== "undefined") {

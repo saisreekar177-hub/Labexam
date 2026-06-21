@@ -11,15 +11,30 @@ const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 
 async function main() {
-  const result = await prisma.faculty.updateMany({
+  const facultyResult = await prisma.faculty.updateMany({
     where: {
-      collegeName: "PSG College of Technology"
+      NOT: {
+        collegeName: "Gouthami Institute of Technology and Management for Women"
+      }
     },
     data: {
-      collegeName: "GITAMW Tech Node"
+      collegeName: "Gouthami Institute of Technology and Management for Women"
     }
   });
-  console.log(`UPDATED ${result.count} FACULTY RECORDS IN DATABASE.`);
+  console.log(`UPDATED ${facultyResult.count} FACULTY RECORDS IN DATABASE.`);
+
+  const studentResult = await prisma.student.updateMany({
+    where: {
+      NOT: {
+        collegeName: "Gouthami Institute of Technology and Management for Women"
+      }
+    },
+    data: {
+      collegeName: "Gouthami Institute of Technology and Management for Women"
+    }
+  });
+  console.log(`UPDATED ${studentResult.count} STUDENT RECORDS IN DATABASE.`);
+
   await prisma.$disconnect();
   await pool.end();
 }
