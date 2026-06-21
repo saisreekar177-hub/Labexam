@@ -48,65 +48,49 @@ export default function Home() {
         
         {/* SECTION 1: HERO */}
         <section className="bg-slate-50/50 border-b border-slate-200/60 py-16 md:py-24">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
-              
-              {/* Hero Copy */}
-              <div className="lg:col-span-5 space-y-6">
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-navy-50 border border-navy-100 text-navy-800 text-[10px] font-bold tracking-wider uppercase">
-                  <Shield className="w-3.5 h-3.5" /> Secure Academic Assessment Node
-                </div>
-                <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-slate-950 tracking-tight leading-tight">
-                  Conduct Secure Programming Assessments with Confidence
-                </h1>
-                <p className="text-sm md:text-base text-slate-600 leading-relaxed max-w-xl">
-                  Create, manage, monitor, and evaluate coding examinations from a single platform. Built specifically for practical lab tests, course evaluations, and secure academic assessments.
-                </p>
-                <div className="flex flex-col sm:flex-row items-center gap-3 pt-2 w-full">
-                  <a 
-                    href="/student/login"
-                    className="w-full sm:w-auto bg-navy-900 hover:bg-navy-950 text-white font-bold text-xs px-6 py-3 rounded-md transition-all shadow-xs focus-ring text-center flex items-center justify-center gap-1.5"
-                  >
-                    Student Access <ArrowRight className="w-3.5 h-3.5" />
-                  </a>
-                  <a 
-                    href="/faculty/login"
-                    className="w-full sm:w-auto bg-white hover:bg-slate-50 border border-slate-300 text-slate-800 font-bold text-xs px-6 py-3 rounded-md transition-all focus-ring text-center flex items-center justify-center gap-1.5"
-                  >
-                    Faculty Portal
-                  </a>
-                  <button 
-                    onClick={openDemoModal}
-                    className="w-full sm:w-auto bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs px-5 py-3 rounded-md transition-all focus-ring text-center"
-                  >
-                    Request Demo
-                  </button>
-                </div>
-                <div className="pt-4 border-t border-slate-200/60 grid grid-cols-3 gap-4 text-left">
-                  <div>
-                    <p className="text-lg font-bold text-slate-950">100%</p>
-                    <p className="text-[10px] text-slate-500 font-semibold uppercase">Exam Lockdown</p>
-                  </div>
-                  <div>
-                    <p className="text-lg font-bold text-slate-950">1.4s</p>
-                    <p className="text-[10px] text-slate-500 font-semibold uppercase">Evaluation Latency</p>
-                  </div>
-                  <div>
-                    <p className="text-lg font-bold text-slate-950">AI-Proctored</p>
-                    <p className="text-[10px] text-slate-500 font-semibold uppercase">Security Monitored</p>
-                  </div>
-                </div>
+          <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-8">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-navy-50 border border-navy-100 text-navy-800 text-[10px] font-bold tracking-wider uppercase mx-auto">
+              <Shield className="w-3.5 h-3.5" /> Secure Academic Assessment Node
+            </div>
+            <h1 className="text-4xl sm:text-5xl md:text-6xl font-black text-slate-950 tracking-tight leading-tight max-w-4xl mx-auto">
+              Conduct Secure Programming Assessments with Confidence
+            </h1>
+            <p className="text-base md:text-lg text-slate-600 leading-relaxed max-w-2xl mx-auto">
+              Create, manage, monitor, and evaluate coding examinations from a single platform. Built specifically for practical lab tests, course evaluations, and secure academic assessments.
+            </p>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2 w-full max-w-md mx-auto">
+              <a 
+                href="/student/login"
+                className="w-full sm:w-auto bg-navy-900 hover:bg-navy-950 text-white font-bold text-xs px-6 py-3 rounded-md transition-all shadow-xs focus-ring text-center flex items-center justify-center gap-1.5"
+              >
+                Student Access <ArrowRight className="w-3.5 h-3.5" />
+              </a>
+              <a 
+                href="/faculty/login"
+                className="w-full sm:w-auto bg-white hover:bg-slate-50 border border-slate-300 text-slate-800 font-bold text-xs px-6 py-3 rounded-md transition-all focus-ring text-center flex items-center justify-center gap-1.5"
+              >
+                Faculty Portal
+              </a>
+              <button 
+                onClick={openDemoModal}
+                className="w-full sm:w-auto bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs px-5 py-3 rounded-md transition-all focus-ring text-center"
+              >
+                Request Demo
+              </button>
+            </div>
+            <div className="pt-8 border-t border-slate-200/60 grid grid-cols-3 gap-8 text-center max-w-2xl mx-auto">
+              <div>
+                <p className="text-2xl font-bold text-slate-950">100%</p>
+                <p className="text-[10px] text-slate-500 font-semibold uppercase">Exam Lockdown</p>
               </div>
-
-              {/* Hero Visual: Interactive Mockup */}
-              <div className="lg:col-span-7">
-                <div className="relative">
-                  {/* Decorative academic frame backdrop border */}
-                  <div className="absolute inset-0 bg-slate-200/50 rounded-2xl transform translate-x-3 translate-y-3 -z-10 border border-slate-300"></div>
-                  <DashboardMockup />
-                </div>
+              <div>
+                <p className="text-2xl font-bold text-slate-950">1.4s</p>
+                <p className="text-[10px] text-slate-500 font-semibold uppercase">Evaluation Latency</p>
               </div>
-
+              <div>
+                <p className="text-2xl font-bold text-slate-950">AI-Proctored</p>
+                <p className="text-[10px] text-slate-500 font-semibold uppercase">Security Monitored</p>
+              </div>
             </div>
           </div>
         </section>
