@@ -29,7 +29,7 @@ interface MockExam {
   duration: number;
   questionsCount: number;
   assignedDate: string;
-  status: "Active" | "Upcoming" | "Completed";
+  status: "Active" | "Upcoming" | "Completed" | "Expired";
   scheduledTime?: string;
   score?: string;
   completionDate?: string;
@@ -124,6 +124,14 @@ export default function StudentDashboard() {
     const loadedAsms = loadAssessments();
     const mapped: MockExam[] = loadedAsms.map(a => {
       const status = getAssessmentStatus(a, studentRoll, sessions);
+      const hasSessionSubmitted = sessions.some(
+        s => s.studentRoll === studentRoll && s.assessmentId === a.id && s.submittedAt !== null
+      );
+      
+      let finalStatus: "Active" | "Upcoming" | "Completed" | "Expired" = status;
+      if (status === "Completed" && !hasSessionSubmitted) {
+        finalStatus = "Expired";
+      }
       
       return {
         id: a.id,
@@ -132,10 +140,10 @@ export default function StudentDashboard() {
         duration: a.duration,
         questionsCount: a.questionsCount,
         assignedDate: a.createdDate,
-        status,
-        scheduledTime: status === "Upcoming" ? a.date : undefined,
-        score: status === "Completed" ? "8.5 / 10.0" : undefined, // Simulated grade for completed exams mapping
-        completionDate: status === "Completed" ? a.date : undefined,
+        status: finalStatus,
+        scheduledTime: finalStatus === "Upcoming" ? a.date : undefined,
+        score: finalStatus === "Completed" ? "8.5 / 10.0" : undefined, // ONLY show grade for completed exams
+        completionDate: finalStatus === "Completed" ? (sessions.find(s => s.studentRoll === studentRoll && s.assessmentId === a.id)?.submittedAt || a.date) : undefined,
         syllabus: "Standard course syllabus criteria checks."
       };
     });

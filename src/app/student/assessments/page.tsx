@@ -25,7 +25,7 @@ interface MockExam {
   duration: number;
   questionsCount: number;
   assignedDate: string;
-  status: "Active" | "Upcoming" | "Completed";
+  status: "Active" | "Upcoming" | "Completed" | "Expired";
   scheduledTime?: string;
   score?: string;
   completionDate?: string;
@@ -107,6 +107,14 @@ export default function StudentAssessmentsList() {
     const storageAssessments = loadAssessments();
     const mapped: MockExam[] = storageAssessments.map(a => {
       const status = getAssessmentStatus(a, studentRoll, sessions);
+      const hasSessionSubmitted = sessions.some(
+        s => s.studentRoll === studentRoll && s.assessmentId === a.id && s.submittedAt !== null
+      );
+      
+      let finalStatus: "Active" | "Upcoming" | "Completed" | "Expired" = status;
+      if (status === "Completed" && !hasSessionSubmitted) {
+        finalStatus = "Expired";
+      }
       
       return {
         id: a.id,
@@ -115,9 +123,9 @@ export default function StudentAssessmentsList() {
         duration: a.duration,
         questionsCount: a.questionsCount,
         assignedDate: a.createdDate,
-        status: status,
-        scheduledTime: a.date,
-        completionDate: a.date,
+        status: finalStatus,
+        scheduledTime: finalStatus === "Upcoming" ? a.date : undefined,
+        completionDate: finalStatus === "Completed" ? (sessions.find(s => s.studentRoll === studentRoll && s.assessmentId === a.id)?.submittedAt || a.date) : undefined,
         marks: a.questionsCount * 15
       };
     });
@@ -215,7 +223,8 @@ export default function StudentAssessmentsList() {
                     <span className={`px-2 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider ${
                       exam.status === "Active" ? "bg-emerald-50 border border-emerald-250 text-emerald-800" :
                       exam.status === "Upcoming" ? "bg-blue-50 border border-blue-250 text-blue-800" :
-                      "bg-purple-50 border border-purple-250 text-purple-800"
+                      exam.status === "Completed" ? "bg-purple-50 border border-purple-250 text-purple-800" :
+                      "bg-rose-50 border border-rose-250 text-rose-800"
                     }`}>
                       {exam.status}
                     </span>
