@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { spawn } from "child_process";
 import fs from "fs";
 import path from "path";
+import os from "os";
 
 // Helper to run code with a timeout and stdin feed
 const runProcess = (
@@ -79,11 +80,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const tempDir = path.join(process.cwd(), "temp_run");
-    if (!fs.existsSync(tempDir)) {
-      fs.mkdirSync(tempDir, { recursive: true });
-    }
-
+    const tempDir = os.tmpdir();
     // Unique temp file name
     const fileId = `${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
 
@@ -156,11 +153,27 @@ except Exception:
 
       fs.writeFileSync(tempFilePath, finalCode);
 
-      const result = await runProcess("python", [tempFilePath], input || "");
+      let result = await runProcess("python", [tempFilePath], input || "");
+      
+      // Fallback to python3 if python ENOENT
+      if (result.error && (result.error.includes("ENOENT") || result.error.includes("not found"))) {
+        result = await runProcess("python3", [tempFilePath], input || "");
+      }
 
       // Cleanup
       if (fs.existsSync(tempFilePath)) {
         fs.unlinkSync(tempFilePath);
+      }
+
+      // If still errored out with ENOENT, return a friendly diagnostic error instead of crashing
+      if (result.error && (result.error.includes("ENOENT") || result.error.includes("not found"))) {
+        return NextResponse.json({
+          status: "success",
+          stdout: "",
+          stderr: "Compiler Error: Python interpreter ('python' or 'python3') is not configured or installed on the server hosting the sandbox environment.",
+          exitCode: 127,
+          error: result.error,
+        });
       }
 
       return NextResponse.json({
