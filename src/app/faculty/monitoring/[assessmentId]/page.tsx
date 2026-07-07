@@ -3,7 +3,7 @@
 import React, { use, useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { loadStudents } from "@/lib/storage";
+import { loadStudents, loadExamSessions, saveExamSessions, loadQuestions } from "@/lib/storage";
 import { 
   ArrowLeft, 
   Search, 
@@ -73,7 +73,7 @@ export default function ProctorControlRoom({ params }: PageProps) {
   const [selectedStudent, setSelectedStudent] = useState<StudentSession | null>(null);
 
   // Live simulation states
-  const [isSimulating, setIsSimulating] = useState(true);
+  const [isSimulating, setIsSimulating] = useState(false);
   const [activeAlert, setActiveAlert] = useState<string | null>(null);
 
   // Time remaining count
@@ -85,26 +85,78 @@ export default function ProctorControlRoom({ params }: PageProps) {
   // Hydrate monitoring sessions from storage student roster
   useEffect(() => {
     const roster = loadStudents();
-    const sessions = roster.map(s => {
-      const defaultSessions = [
-        { roll: "22CSE102", currentQuestion: "Q2: Validate BST", attemptedCount: 2, submittedCount: 1, lastActivity: "10s ago", status: "Active" as const, warningsCount: 1, ip: "192.168.12.104", recentLogs: ["10:12 AM - Tab switch warning", "10:05 AM - Logged in"] },
-        { roll: "22CSE115", currentQuestion: "Q3: Dijkstra Path", attemptedCount: 3, submittedCount: 2, lastActivity: "2m ago", status: "Active" as const, warningsCount: 0, ip: "192.168.12.110", recentLogs: ["10:45 AM - Solve Q2 submitted", "10:15 AM - Logged in"] },
-        { roll: "22CSE142", currentQuestion: "Q2: Validate BST", attemptedCount: 2, submittedCount: 1, lastActivity: "5m ago", status: "Idle" as const, warningsCount: 2, ip: "192.168.12.122", recentLogs: ["10:52 AM - Fullscreen exit warning 2", "10:48 AM - Tab switch warning 1"] },
-        { roll: "22CSE159", currentQuestion: "Suspended", attemptedCount: 1, submittedCount: 0, lastActivity: "15m ago", status: "Disconnected" as const, warningsCount: 3, ip: "192.168.12.138", recentLogs: ["10:05 AM - Suspended due to 3 warnings", "10:02 AM - Fullscreen Exit warning 3"] },
-        { roll: "22CSE185", currentQuestion: "None", attemptedCount: 0, submittedCount: 0, lastActivity: "10m ago", status: "Disconnected" as const, warningsCount: 0, ip: "—", recentLogs: ["10:00 AM - Enrollment validated"] },
-        { roll: "22CSE204", currentQuestion: "All Completed", attemptedCount: 3, submittedCount: 3, lastActivity: "8m ago", status: "Submitted" as const, warningsCount: 0, ip: "192.168.12.109", recentLogs: ["10:35 AM - Exam completed successfully"] },
-        { roll: "22CSE210", currentQuestion: "Q2: Validate BST", attemptedCount: 2, submittedCount: 1, lastActivity: "1m ago", status: "Active" as const, warningsCount: 0, ip: "192.168.12.115", recentLogs: ["10:50 AM - Solve Q1 submitted"] }
-      ];
+    const examSessions = loadExamSessions();
+    const allQuestions = loadQuestions();
 
-      const match = defaultSessions.find(ds => ds.roll === s.roll);
-      if (match) {
-        return {
-          ...match,
-          name: s.name,
-          dept: s.dept,
-          year: s.year,
-          section: s.section
-        };
+    const parseSubmissions = (jsonStr: string | null | undefined) => {
+      const defaultVal = {
+        submissions: {} as Record<string, string>,
+        warningsCount: 0,
+        warningsLogs: [] as string[],
+        lastActivity: "Not started",
+        status: "Disconnected" as const
+      };
+      if (!jsonStr) return defaultVal;
+      try {
+        const parsed = JSON.parse(jsonStr);
+        if (parsed && typeof parsed === 'object') {
+          if ('submissions' in parsed) {
+            return {
+              submissions: parsed.submissions || {},
+              warningsCount: typeof parsed.warningsCount === 'number' ? parsed.warningsCount : 0,
+              warningsLogs: Array.isArray(parsed.warningsLogs) ? parsed.warningsLogs : [],
+              lastActivity: parsed.lastActivity || "Not started",
+              status: parsed.status || "Disconnected"
+            };
+          } else {
+            return {
+              ...defaultVal,
+              submissions: parsed,
+              status: "Active" as const
+            };
+          }
+        }
+      } catch (e) {}
+      return defaultVal;
+    };
+
+    const sessions: StudentSession[] = roster.map(s => {
+      const session = examSessions.find(es => es.studentRoll === s.roll && es.assessmentId === assessmentId);
+      
+      let currentQuestion = "None";
+      let attemptedCount = 0;
+      let submittedCount = 0;
+      let lastActivity = "Not started";
+      let status: "Active" | "Idle" | "Submitted" | "Disconnected" = "Disconnected";
+      let warningsCount = 0;
+      let ip = "—";
+      let recentLogs: string[] = [];
+
+      if (session) {
+        const parsed = parseSubmissions(session.codeSubmissions);
+        submittedCount = Object.keys(parsed.submissions).length;
+        attemptedCount = submittedCount;
+        warningsCount = parsed.warningsCount;
+        recentLogs = parsed.warningsLogs;
+        lastActivity = parsed.lastActivity;
+        status = parsed.status;
+        ip = "192.168.12." + Math.floor(100 + (s.roll.charCodeAt(s.roll.length - 1) || 0) * 1.5);
+
+        if (session.submittedAt) {
+          status = "Submitted";
+        }
+
+        // Determine current question based on code submissions key
+        const orderIds = session.questionOrder ? JSON.parse(session.questionOrder) : [];
+        if (orderIds.length > 0) {
+          const unanswered = orderIds.find((id: string) => !parsed.submissions[id]);
+          if (unanswered) {
+            const q = allQuestions.find(que => que.id === unanswered);
+            currentQuestion = q ? q.title : "In Progress";
+          } else {
+            currentQuestion = "All Completed";
+          }
+        }
       }
 
       return {
@@ -113,27 +165,57 @@ export default function ProctorControlRoom({ params }: PageProps) {
         dept: s.dept,
         year: s.year,
         section: s.section,
-        currentQuestion: "Q1: Invert Binary Tree",
-        attemptedCount: 1,
-        submittedCount: 0,
-        lastActivity: "Just logged in",
-        status: "Active" as const,
-        warningsCount: 0,
-        ip: "192.168.12." + Math.floor(100 + Math.random() * 150),
-        recentLogs: ["10:05 AM - Logged in and verified network node"]
+        currentQuestion,
+        attemptedCount,
+        submittedCount,
+        lastActivity,
+        status,
+        warningsCount,
+        ip,
+        recentLogs
       };
     });
 
     setStudents(sessions);
+
+    // Hydrate surveillance events feed from actual session logs
+    const allEvents: ActivityEvent[] = [];
+    roster.forEach(student => {
+      const session = examSessions.find(es => es.studentRoll === student.roll && es.assessmentId === assessmentId);
+      if (session && session.codeSubmissions) {
+        const parsed = parseSubmissions(session.codeSubmissions);
+        parsed.warningsLogs.forEach((log: string, logIdx: number) => {
+          const parts = log.split(" - ");
+          const time = parts[0] || "";
+          const eventText = parts[1] || log;
+          
+          let severity: "info" | "warning" | "critical" = "info";
+          if (eventText.toLowerCase().includes("warning") || eventText.toLowerCase().includes("tab")) {
+            severity = "warning";
+          }
+          if (eventText.toLowerCase().includes("disqualified") || eventText.toLowerCase().includes("suspended")) {
+            severity = "critical";
+          }
+          
+          allEvents.push({
+            id: `${student.roll}_${logIdx}`,
+            time,
+            roll: student.roll,
+            name: student.name,
+            event: eventText,
+            severity
+          });
+        });
+      }
+    });
+
+    // Sort events by time descending
+    allEvents.sort((a, b) => b.time.localeCompare(a.time));
+    setEvents(allEvents.slice(0, 15));
   }, []);
 
   // Initial Activity feed events log
-  const [events, setEvents] = useState<ActivityEvent[]>([
-    { id: "e1", time: "11:24:05", roll: "22CSE102", name: "Aditya Verma", event: "Switched browser focus tab (Warning 1/3 logged)", severity: "warning" },
-    { id: "e2", time: "11:22:15", roll: "22CSE115", name: "Bhavya Sri", event: "Compiled Q3 Dijkstra (All cases passed)", severity: "info" },
-    { id: "e3", time: "11:18:42", roll: "22CSE159", name: "Divya N", event: "Auto-submitted and locked (Tab switches exceeded)", severity: "critical" },
-    { id: "e4", time: "11:15:30", roll: "22CSE204", name: "Ishaan Mehta", event: "Submitted exam papers final grading", severity: "info" }
-  ]);
+  const [events, setEvents] = useState<ActivityEvent[]>([]);
 
   // Simulated WebSocket real-time updates ticker
   useEffect(() => {
@@ -274,58 +356,93 @@ export default function ProctorControlRoom({ params }: PageProps) {
   const handleFacultyAction = (action: "warn" | "lock" | "unlock" | "force-submit" | "extend") => {
     if (!selectedStudent) return;
 
-    setStudents(prev => prev.map(s => {
-      if (s.roll === selectedStudent.roll) {
-        let updated = { ...s };
-        const timeNow = new Date().toTimeString().split(" ")[0];
+    const timeNow = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    const sessions = loadExamSessions();
+    let updatedSessionObj: any = null;
 
-        if (action === "warn") {
-          const nextWarn = Math.min(s.warningsCount + 1, 3);
-          alert(`Simulation: Warning alert text dispatched to ${s.name}'s sandbox window.`);
-          updated = { 
-            ...updated, 
-            warningsCount: nextWarn,
-            status: nextWarn >= 3 ? "Disconnected" as const : s.status,
-            currentQuestion: nextWarn >= 3 ? "Suspended" : s.currentQuestion,
-            recentLogs: [`${timeNow} - Faculty manual warning issued`, ...s.recentLogs]
-          };
-        } else if (action === "lock") {
-          alert(`Simulation: Editor locked. ${s.name}'s compiler workspace is suspended.`);
-          updated = { 
-            ...updated, 
-            status: "Idle" as const, 
-            currentQuestion: "Locked by Admin",
-            recentLogs: [`${timeNow} - Terminal session locked by Faculty`, ...s.recentLogs]
-          };
-        } else if (action === "unlock") {
-          alert(`Simulation: Workspace unlocked for ${s.name}.`);
-          updated = { 
-            ...updated, 
-            status: "Active" as const, 
-            currentQuestion: "Q2: Validate BST",
-            recentLogs: [`${timeNow} - Workspace unlocked by Faculty`, ...s.recentLogs]
-          };
-        } else if (action === "force-submit") {
-          alert(`Simulation: Active exam solution locked and submitted for ${s.name}.`);
-          updated = { 
-            ...updated, 
-            status: "Submitted" as const, 
-            currentQuestion: "Force Submitted",
-            recentLogs: [`${timeNow} - Exam terminated & submitted by Faculty`, ...s.recentLogs]
-          };
-        } else if (action === "extend") {
-          alert(`Simulation: Granted +15 minutes limit extension to Roll ${s.roll}.`);
-          updated = { 
-            ...updated, 
-            recentLogs: [`${timeNow} - Ext Time (+15 mins) granted`, ...s.recentLogs]
-          };
+    const updatedSessions = sessions.map(s => {
+      if (s.studentRoll === selectedStudent.roll && s.assessmentId === assessmentId) {
+        let data = {
+          submissions: {} as Record<string, string>,
+          warningsCount: 0,
+          warningsLogs: [] as string[],
+          lastActivity: "Just now",
+          status: "Active" as "Active" | "Idle" | "Submitted" | "Disconnected"
+        };
+        if (s.codeSubmissions) {
+          try {
+            const parsed = JSON.parse(s.codeSubmissions);
+            if (parsed && typeof parsed === 'object') {
+              if ('submissions' in parsed) {
+                data.submissions = parsed.submissions || {};
+                data.warningsCount = parsed.warningsCount || 0;
+                data.warningsLogs = parsed.warningsLogs || [];
+                data.lastActivity = parsed.lastActivity || "Just now";
+                data.status = parsed.status || "Active";
+              } else {
+                data.submissions = parsed;
+              }
+            }
+          } catch (e) {}
         }
 
+        if (action === "warn") {
+          const nextWarn = Math.min(data.warningsCount + 1, 3);
+          data.warningsCount = nextWarn;
+          data.warningsLogs = [`${timeNow} - Faculty manual warning issued`, ...data.warningsLogs];
+          data.lastActivity = `${timeNow} - Warning issued by Faculty`;
+          if (nextWarn >= 3) {
+            data.status = "Disconnected" as const;
+          }
+        } else if (action === "lock") {
+          data.status = "Idle" as const;
+          data.warningsLogs = [`${timeNow} - Terminal session locked by Faculty`, ...data.warningsLogs];
+          data.lastActivity = `${timeNow} - Locked by Faculty`;
+        } else if (action === "unlock") {
+          data.status = "Active" as const;
+          data.warningsLogs = [`${timeNow} - Terminal session unlocked by Faculty`, ...data.warningsLogs];
+          data.lastActivity = `${timeNow} - Unlocked by Faculty`;
+        } else if (action === "force-submit") {
+          data.status = "Submitted" as const;
+          data.warningsLogs = [`${timeNow} - Exam force-submitted by Faculty`, ...data.warningsLogs];
+          data.lastActivity = `${timeNow} - Force-submitted by Faculty`;
+          s.submittedAt = new Date().toISOString();
+        } else if (action === "extend") {
+          data.warningsLogs = [`${timeNow} - Ext Time (+15 mins) granted`, ...data.warningsLogs];
+          data.lastActivity = `${timeNow} - Time extended (+15 mins)`;
+        }
+
+        s.codeSubmissions = JSON.stringify(data);
+        updatedSessionObj = s;
+      }
+      return s;
+    });
+
+    if (updatedSessionObj) {
+      saveExamSessions(updatedSessions);
+    }
+
+    setStudents(prev => prev.map(s => {
+      if (s.roll === selectedStudent.roll) {
+        const parsed = updatedSessionObj ? JSON.parse(updatedSessionObj.codeSubmissions) : {};
+        const updated = {
+          ...s,
+          warningsCount: parsed.warningsCount ?? s.warningsCount,
+          status: updatedSessionObj?.submittedAt ? "Submitted" : (parsed.status ?? s.status),
+          lastActivity: parsed.lastActivity ?? s.lastActivity,
+          recentLogs: parsed.warningsLogs ?? s.recentLogs
+        };
         setSelectedStudent(updated);
         return updated;
       }
       return s;
     }));
+
+    if (action === "warn") alert(`Warning dispatched to ${selectedStudent.name}'s workspace.`);
+    else if (action === "lock") alert(`Editor locked for ${selectedStudent.name}.`);
+    else if (action === "unlock") alert(`Workspace unlocked for ${selectedStudent.name}.`);
+    else if (action === "force-submit") alert(`Exam force-submitted for ${selectedStudent.name}.`);
+    else if (action === "extend") alert(`Time extended (+15 mins) for ${selectedStudent.name}.`);
   };
 
   // Filter computations

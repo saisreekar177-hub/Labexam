@@ -263,12 +263,23 @@ export default function StudentExamWorkspace({ params }: PageProps) {
       setIsScheduledDate(currentStatus === "Active");
 
       let assignedQuestions: any[] = [];
+      let initialWarnings = 0;
       if (existingSession) {
         // Load assigned questions in the stored order
         const orderIds: string[] = JSON.parse(existingSession.questionOrder);
         assignedQuestions = orderIds.map(id => questionPool.find(q => q.id === id)).filter(Boolean);
         if (assignedQuestions.length === 0 && questionPool.length > 0) {
           assignedQuestions = questionPool.slice(0, Math.min(5, questionPool.length));
+        }
+
+        // Parse existing session warnings Count
+        if (existingSession.codeSubmissions) {
+          try {
+            const parsed = JSON.parse(existingSession.codeSubmissions);
+            if (parsed && typeof parsed === 'object' && 'warningsCount' in parsed) {
+              initialWarnings = parsed.warningsCount || 0;
+            }
+          } catch (e) {}
         }
       } else {
         // First time entering the exam: select a random subset of 5 questions
@@ -281,6 +292,15 @@ export default function StudentExamWorkspace({ params }: PageProps) {
         const subsetSize = Math.min(5, shuffledPool.length);
         assignedQuestions = shuffledPool.slice(0, subsetSize);
 
+        const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const initialData = {
+          submissions: {},
+          warningsCount: 0,
+          warningsLogs: [`${timeStr} - Exam session initialized`],
+          lastActivity: `${timeStr} - Exam started`,
+          status: "Active"
+        };
+
         // Save this new randomized order assigned to this student
         const newSession = {
           id: Date.now().toString() + "_" + Math.random().toString(36).substr(2, 9),
@@ -288,10 +308,12 @@ export default function StudentExamWorkspace({ params }: PageProps) {
           assessmentId: assessmentId,
           questionOrder: JSON.stringify(assignedQuestions.map(q => q.id)),
           startedAt: new Date().toISOString(),
-          submittedAt: null
+          submittedAt: null,
+          codeSubmissions: JSON.stringify(initialData)
         };
         saveExamSessions([newSession, ...sessions]);
       }
+      setWarningsCount(initialWarnings);
 
       setExamData({
         id: foundAssessment.id,
@@ -467,16 +489,69 @@ export default function StudentExamWorkspace({ params }: PageProps) {
     return () => clearInterval(saveTimer);
   }, [networkError, showSuspendModal]);
 
+  const saveProctorLogToSession = (nextWarnings: number, message: string) => {
+    try {
+      const profile = loadStudentProfile();
+      const studentRoll = profile.roll || "DEMO_STUDENT";
+      const sessions = loadExamSessions();
+      const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+      const updated = sessions.map(s => {
+        if (s.studentRoll === studentRoll && s.assessmentId === assessmentId) {
+          let data = {
+            submissions: {} as Record<string, string>,
+            warningsCount: 0,
+            warningsLogs: [] as string[],
+            lastActivity: "Just now",
+            status: "Active" as "Active" | "Idle" | "Submitted" | "Disconnected"
+          };
+          if (s.codeSubmissions) {
+            try {
+              const parsed = JSON.parse(s.codeSubmissions);
+              if (parsed && typeof parsed === 'object') {
+                if ('submissions' in parsed) {
+                  data.submissions = parsed.submissions || {};
+                  data.warningsCount = parsed.warningsCount || 0;
+                  data.warningsLogs = parsed.warningsLogs || [];
+                  data.lastActivity = parsed.lastActivity || "Just now";
+                  data.status = parsed.status || "Active";
+                } else {
+                  data.submissions = parsed;
+                }
+              }
+            } catch (e) {}
+          }
+          data.warningsCount = nextWarnings;
+          data.warningsLogs = [`${timeStr} - ${message}`, ...data.warningsLogs];
+          data.lastActivity = `${timeStr} - ${message}`;
+          if (nextWarnings >= 3) {
+            data.status = "Disconnected" as const;
+          }
+          return {
+            ...s,
+            codeSubmissions: JSON.stringify(data)
+          };
+        }
+        return s;
+      });
+      saveExamSessions(updated);
+    } catch (e) {
+      console.error("Failed to save proctor log to exam session:", e);
+    }
+  };
+
   const triggerProctorViolation = (reason: string) => {
     if (showSuspendModal) return;
     const nextWarnings = warningsCount + 1;
     setWarningsCount(nextWarnings);
 
+    saveProctorLogToSession(nextWarnings, reason);
+
     if (nextWarnings >= 3) {
       setShowSuspendModal(true);
       setShowWarningModal(false);
       triggerAutoSubmit(`Proctor violation threshold reached (${nextWarnings}/3 warnings).`);
-      
+
       try {
         const profile = loadStudentProfile();
         if (profile && profile.roll) {
@@ -699,16 +774,35 @@ export default function StudentExamWorkspace({ params }: PageProps) {
 
     try {
       const sessions = loadExamSessions();
+      const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       const updated = sessions.map(s => {
         if (s.studentRoll === studentRoll && s.assessmentId === assessmentId) {
-          let subs: Record<string, string> = {};
+          let data = {
+            submissions: {} as Record<string, string>,
+            warningsCount: warningsCount,
+            warningsLogs: [] as string[],
+            lastActivity: "Just now",
+            status: "Active" as "Active" | "Idle" | "Submitted" | "Disconnected"
+          };
           if (s.codeSubmissions) {
             try {
-              subs = JSON.parse(s.codeSubmissions);
+              const parsed = JSON.parse(s.codeSubmissions);
+              if (parsed && typeof parsed === 'object') {
+                if ('submissions' in parsed) {
+                  data.submissions = parsed.submissions || {};
+                  data.warningsCount = parsed.warningsCount || 0;
+                  data.warningsLogs = parsed.warningsLogs || [];
+                  data.lastActivity = parsed.lastActivity || "Just now";
+                  data.status = parsed.status || "Active";
+                } else {
+                  data.submissions = parsed;
+                }
+              }
             } catch (e) {}
           }
-          subs[currentQuestion.id] = codeContent[currentQuestion.id] || "";
-          return { ...s, codeSubmissions: JSON.stringify(subs) };
+          data.submissions[currentQuestion.id] = codeContent[currentQuestion.id] || "";
+          data.lastActivity = `${timeStr} - Submitted ${currentQuestion.title}`;
+          return { ...s, codeSubmissions: JSON.stringify(data) };
         }
         return s;
       });
@@ -744,21 +838,41 @@ export default function StudentExamWorkspace({ params }: PageProps) {
     // Save session submit timestamp on auto-submit
     try {
       const sessions = loadExamSessions();
+      const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       const updated = sessions.map(s => {
         if (s.studentRoll === studentRoll && s.assessmentId === assessmentId) {
-          let subs: Record<string, string> = {};
+          let data = {
+            submissions: {} as Record<string, string>,
+            warningsCount: warningsCount,
+            warningsLogs: [] as string[],
+            lastActivity: "Just now",
+            status: "Active" as "Active" | "Idle" | "Submitted" | "Disconnected"
+          };
           if (s.codeSubmissions) {
             try {
-              subs = JSON.parse(s.codeSubmissions);
+              const parsed = JSON.parse(s.codeSubmissions);
+              if (parsed && typeof parsed === 'object') {
+                if ('submissions' in parsed) {
+                  data.submissions = parsed.submissions || {};
+                  data.warningsCount = parsed.warningsCount || 0;
+                  data.warningsLogs = parsed.warningsLogs || [];
+                  data.lastActivity = parsed.lastActivity || "Just now";
+                  data.status = parsed.status || "Active";
+                } else {
+                  data.submissions = parsed;
+                }
+              }
             } catch (e) {}
           }
           questions.forEach(q => {
-            subs[q.id] = codeContent[q.id] || "";
+            data.submissions[q.id] = codeContent[q.id] || "";
           });
+          data.status = "Submitted" as const;
+          data.lastActivity = `${timeStr} - Auto-Submitted (Disqualified / Time Out)`;
           return { 
             ...s, 
             submittedAt: new Date().toISOString(),
-            codeSubmissions: JSON.stringify(subs)
+            codeSubmissions: JSON.stringify(data)
           };
         }
         return s;
@@ -791,21 +905,41 @@ export default function StudentExamWorkspace({ params }: PageProps) {
       const studentProfile = loadStudentProfile();
       const studentRoll = studentProfile.roll || "DEMO_STUDENT";
       const sessions = loadExamSessions();
+      const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       const updated = sessions.map(s => {
         if (s.studentRoll === studentRoll && s.assessmentId === assessmentId) {
-          let subs: Record<string, string> = {};
+          let data = {
+            submissions: {} as Record<string, string>,
+            warningsCount: warningsCount,
+            warningsLogs: [] as string[],
+            lastActivity: "Just now",
+            status: "Active" as "Active" | "Idle" | "Submitted" | "Disconnected"
+          };
           if (s.codeSubmissions) {
             try {
-              subs = JSON.parse(s.codeSubmissions);
+              const parsed = JSON.parse(s.codeSubmissions);
+              if (parsed && typeof parsed === 'object') {
+                if ('submissions' in parsed) {
+                  data.submissions = parsed.submissions || {};
+                  data.warningsCount = parsed.warningsCount || 0;
+                  data.warningsLogs = parsed.warningsLogs || [];
+                  data.lastActivity = parsed.lastActivity || "Just now";
+                  data.status = parsed.status || "Active";
+                } else {
+                  data.submissions = parsed;
+                }
+              }
             } catch (e) {}
           }
           questions.forEach(q => {
-            subs[q.id] = codeContent[q.id] || "";
+            data.submissions[q.id] = codeContent[q.id] || "";
           });
+          data.status = "Submitted" as const;
+          data.lastActivity = `${timeStr} - Exam Submitted`;
           return { 
             ...s, 
             submittedAt: new Date().toISOString(),
-            codeSubmissions: JSON.stringify(subs)
+            codeSubmissions: JSON.stringify(data)
           };
         }
         return s;

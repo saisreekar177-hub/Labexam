@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { loadAssessments, saveAssessments, getAssessmentStatus } from "@/lib/storage";
+import { loadAssessments, saveAssessments, getAssessmentStatus, loadExamSessions } from "@/lib/storage";
 import { 
   ArrowLeft, 
   Search, 
@@ -40,21 +40,36 @@ export default function ActiveAssessmentsMonitoring() {
   // Load active/scheduled exams on client-side mount
   useEffect(() => {
     const loaded = loadAssessments();
+    const sessions = loadExamSessions();
+
+    const parseWarnings = (jsonStr: string | null | undefined): number => {
+      if (!jsonStr) return 0;
+      try {
+        const parsed = JSON.parse(jsonStr);
+        if (parsed && typeof parsed === 'object') {
+          if ('warningsCount' in parsed) {
+            return parsed.warningsCount || 0;
+          }
+        }
+      } catch (e) {}
+      return 0;
+    };
+
     const mapped: ActiveExam[] = loaded.map(asm => {
-      let activeCandidates = 0;
-      let violationsCount = 0;
-      let timeRemaining = "Starts in 16 hours";
+      const asmSessions = sessions.filter(s => s.assessmentId === asm.id);
       
-      const comp = getAssessmentStatus(asm, "", []);
+      const activeCandidates = asmSessions.filter(s => s.submittedAt === null).length;
+      const violationsCount = asmSessions.reduce((sum, s) => sum + parseWarnings(s.codeSubmissions), 0);
+      
+      let timeRemaining = "Scheduled";
+      const comp = getAssessmentStatus(asm, "", sessions);
       
       if (comp === "Active") {
-        activeCandidates = Math.max(0, asm.assignedCount - 8);
-        violationsCount = 3;
-        timeRemaining = "01:24:15";
+        timeRemaining = "Active Room";
       } else if (comp === "Completed") {
-        activeCandidates = 0;
-        violationsCount = 8;
         timeRemaining = "Completed";
+      } else {
+        timeRemaining = `Scheduled (${asm.date})`;
       }
       
       return {
@@ -83,13 +98,13 @@ export default function ActiveAssessmentsMonitoring() {
         return {
           ...exam,
           status: "Active",
-          activeCandidates: Math.max(0, exam.totalCandidates - 5),
-          timeRemaining: "02:00:00"
+          activeCandidates: 0,
+          timeRemaining: "Active Room"
         };
       }
       return exam;
     }));
-    alert("Simulation: Examination manually forced active. Dispatched sandbox configuration keys.");
+    alert("Examination manually activated. Dispatched configuration keys.");
   };
 
   const filteredExams = activeExams.filter(exam => {
