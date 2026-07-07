@@ -569,100 +569,102 @@ export default function StudentScorecardReportPage({ params }: PageProps) {
           <div className="space-y-6">
             
             {/* Header section matching Gouthami screenshot branding */}
-            <div className="text-center space-y-1">
-              <h2 className="font-extrabold text-sm tracking-tight text-slate-900 uppercase leading-snug">
-                {faculty.collegeName}
-              </h2>
-              <p className="text-[10px] text-slate-700 font-medium">
-                {assessment.name} – Individual Report
+            <div className="text-center space-y-2 mt-4">
+              <h1 className="font-extrabold text-xl tracking-normal text-black font-sans max-w-[550px] mx-auto leading-tight">
+                Gouthami Institute of Technology and Management for
+                <br />
+                Women
+              </h1>
+              <p className="text-sm text-slate-850 font-normal mt-1">
+                {assessment.name} - Individual Report
               </p>
-              <div className="h-[1px] bg-slate-200 w-full mt-3"></div>
+              <div className="h-[1px] bg-slate-300 w-full mt-4"></div>
             </div>
 
             {/* Candidate parameters grid */}
-            <div className="flex justify-center py-2">
-              <table className="w-full max-w-sm text-[11px] font-sans text-left">
+            <div className="flex justify-center py-4">
+              <table className="w-full max-w-[420px] text-[13px] font-sans">
                 <tbody>
                   <tr className="align-baseline">
-                    <td className="py-1.5 pr-4 text-slate-500 font-semibold w-1/3">Student Name</td>
-                    <td className="py-1.5 font-bold text-slate-950 w-2/3">{metrics.name}</td>
+                    <td className="py-2 pr-8 text-slate-600 font-normal text-right w-1/2">Student Name</td>
+                    <td className="py-2 pl-4 font-bold text-slate-950 text-left w-1/2">{metrics.name}</td>
                   </tr>
                   <tr className="align-baseline">
-                    <td className="py-1.5 pr-4 text-slate-500 font-semibold">Roll Number</td>
-                    <td className="py-1.5 font-bold text-slate-950 font-mono text-[10.5px]">{metrics.roll}</td>
+                    <td className="py-2 pr-8 text-slate-600 font-normal text-right">Roll Number</td>
+                    <td className="py-2 pl-4 font-bold text-blue-600 hover:text-blue-800 underline text-left font-mono text-[13px]">{metrics.roll}</td>
                   </tr>
                   <tr className="align-baseline">
-                    <td className="py-1.5 pr-4 text-slate-500 font-semibold">Branch</td>
-                    <td className="py-1.5 font-bold text-slate-950">{metrics.dept}</td>
+                    <td className="py-2 pr-8 text-slate-600 font-normal text-right">Branch</td>
+                    <td className="py-2 pl-4 font-bold text-slate-950 text-left">{metrics.dept}</td>
                   </tr>
                   <tr className="align-baseline">
-                    <td className="py-1.5 pr-4 text-slate-500 font-semibold">Status</td>
-                    <td className="py-1.5 font-bold text-slate-950">{metrics.status}</td>
+                    <td className="py-2 pr-8 text-slate-600 font-normal text-right">Status</td>
+                    <td className="py-2 pl-4 font-bold text-slate-950 text-left">{metrics.status}</td>
                   </tr>
                   <tr className="align-baseline">
-                    <td className="py-1.5 pr-4 text-slate-500 font-semibold">Marks Obtained</td>
-                    <td className="py-1.5 font-bold text-slate-950 font-mono text-[10.5px]">{metrics.marks} / 50</td>
+                    <td className="py-2 pr-8 text-slate-600 font-normal text-right">Marks Obtained</td>
+                    <td className="py-2 pl-4 font-bold text-slate-950 text-left font-mono text-[13px]">{metrics.marks} / 50</td>
                   </tr>
                   <tr className="align-baseline">
-                    <td className="py-1.5 pr-4 text-slate-500 font-semibold">Questions Attempted</td>
-                    <td className="py-1.5 font-bold text-slate-950 font-mono text-[10.5px]">{metrics.attempted} / {metrics.totalQuestions}</td>
+                    <td className="py-2 pr-8 text-slate-600 font-normal text-right">Questions Attempted</td>
+                    <td className="py-2 pl-4 font-bold text-slate-950 text-left font-mono text-[13px]">{metrics.attempted} / {metrics.totalQuestions}</td>
                   </tr>
                   <tr className="align-baseline">
-                    <td className="py-1.5 pr-4 text-slate-500 font-semibold">Time Taken</td>
-                    <td className="py-1.5 font-bold text-slate-950 font-mono text-[10.5px]">{metrics.timeTaken}</td>
+                    <td className="py-2 pr-8 text-slate-600 font-normal text-right">Time Taken</td>
+                    <td className="py-2 pl-4 font-bold text-slate-950 text-left font-mono text-[13px]">{metrics.timeTaken}</td>
                   </tr>
                   <tr className="align-baseline">
-                    <td className="py-1.5 pr-4 text-slate-500 font-semibold">Submission Time</td>
-                    <td className="py-1.5 font-bold text-slate-950 font-mono text-[10.5px]">{metrics.submissionTime}</td>
+                    <td className="py-2 pr-8 text-slate-600 font-normal text-right">Submission Time</td>
+                    <td className="py-2 pl-4 font-bold text-slate-950 text-left font-mono text-[13px]">{metrics.submissionTime}</td>
                   </tr>
                 </tbody>
               </table>
             </div>
 
             {/* Performance Title */}
-            <div className="text-center font-bold text-[11px] text-slate-900 tracking-wide uppercase pt-2">
+            <div className="border-t border-b border-slate-300 py-2.5 text-center font-bold text-[12px] text-slate-950 tracking-wide uppercase">
               Detailed Question Performance
             </div>
 
             {/* Questions Table exactly matching screenshot */}
-            <div className="border border-slate-350 rounded-xs overflow-hidden">
-              <table className="w-full text-left border-collapse text-[10.5px] font-sans">
+            <div className="border border-slate-400 rounded-none overflow-hidden">
+              <table className="w-full text-left border-collapse text-[11.5px] font-sans">
                 <thead>
-                  <tr className="bg-slate-50 text-slate-900 font-bold uppercase text-[9px] border-b border-slate-350">
-                    <th className="py-2 px-3 w-[15%]">Q No</th>
-                    <th className="py-2 px-3 w-[45%]">Question Title</th>
-                    <th className="py-2 px-3 text-center w-[13%]">Attempted</th>
-                    <th className="py-2 px-3 text-center w-[13%]">Result</th>
+                  <tr className="bg-slate-50 text-slate-900 font-bold uppercase text-[9px] border-b border-slate-400">
+                    <th className="py-2 px-3 border-r border-slate-400 w-[15%]">Q.No</th>
+                    <th className="py-2 px-3 border-r border-slate-400 w-[45%]">Question Title</th>
+                    <th className="py-2 px-3 border-r border-slate-400 text-center w-[13%]">Attempted</th>
+                    <th className="py-2 px-3 border-r border-slate-400 text-center w-[13%]">Result</th>
                     <th className="py-2 px-3 text-center w-[14%]">Marks</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-300">
+                <tbody className="divide-y divide-slate-400">
                   {questionOutcomes.map((q, idx) => (
                     <React.Fragment key={q.id}>
-                      <tr className="bg-white hover:bg-slate-50/40 question-row">
-                        <td className="py-3 px-3 font-semibold text-slate-900">
+                      <tr className="bg-white hover:bg-slate-50/40 question-row border-b border-slate-400">
+                        <td className="py-2.5 px-3 border-r border-slate-400 font-semibold text-slate-900">
                           Q{idx + 1} (ID: {q.id})
                         </td>
-                        <td className="py-3 px-3 text-slate-800">
+                        <td className="py-2.5 px-3 border-r border-slate-400 text-slate-800">
                           {q.title}
                         </td>
-                        <td className="py-3 px-3 text-center text-slate-800">
+                        <td className="py-2.5 px-3 border-r border-slate-400 text-center font-bold text-slate-850">
                           {q.attempted}
                         </td>
-                        <td className="py-3 px-3 text-center text-slate-800">
+                        <td className="py-2.5 px-3 border-r border-slate-400 text-center font-bold text-slate-850">
                           {q.result}
                         </td>
-                        <td className="py-3 px-3 text-center font-bold text-slate-900">
+                        <td className="py-2.5 px-3 text-center font-bold text-slate-900">
                           {q.marks}
                         </td>
                       </tr>
                       {q.attempted === "Yes" && (
-                        <tr className="bg-white question-row">
-                          <td colSpan={5} className="py-3 px-6 pb-5">
-                            <div className="font-bold text-[8.5px] text-slate-900 uppercase tracking-widest mb-1.5">
+                        <tr className="bg-white question-row border-b border-slate-400">
+                          <td colSpan={5} className="py-4 px-6 pb-6 border-b border-slate-400">
+                            <div className="font-bold text-[9px] text-slate-550 uppercase tracking-widest mb-2">
                               STUDENT'S SUBMITTED LOGIC:
                             </div>
-                            <div className="border border-slate-900 p-4 font-mono text-[10px] text-slate-950 whitespace-pre leading-relaxed overflow-x-auto bg-white">
+                            <div className="border border-slate-900 p-4 font-mono text-[11px] text-slate-950 whitespace-pre leading-relaxed overflow-x-auto bg-white max-w-full">
                               {q.submittedCode}
                             </div>
                           </td>
