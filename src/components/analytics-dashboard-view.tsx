@@ -315,7 +315,9 @@ export default function AnalyticsDashboardView({
 
   // Grader calculations for top metrics
   const activeStudentsCount = allStudents.length;
-  const completedAssessmentsCount = allAssessments.filter(a => a.status === "Completed").length;
+  const completedAssessmentsCount = allAssessments.filter(a => {
+    return a.status === "Completed" || examSessions.some(es => es.assessmentId === a.id && es.submittedAt);
+  }).length;
   const activeAssessmentsCount = allAssessments.filter(a => a.status === "Active").length;
   const aggregateScore = allStudents.length ? Math.round(allStudents.reduce((acc, s) => acc + getStudentVirtualScore(s), 0) / allStudents.length * 10) / 10 : 0.0;
   const aggregatePassPercentage = allStudents.length ? Math.round(allStudents.filter(s => getStudentVirtualScore(s) >= 50).length / allStudents.length * 1000) / 10 : 0.0;
@@ -418,7 +420,9 @@ export default function AnalyticsDashboardView({
 
   // Trend Data historical values for charts using actual completed assessments
   const trendData = React.useMemo(() => {
-    const completedAsms = allAssessments.filter(a => a.status === "Completed");
+    const completedAsms = allAssessments.filter(a => {
+      return a.status === "Completed" || examSessions.some(es => es.assessmentId === a.id && es.submittedAt);
+    });
     
     // Fallback labels to show empty/flat lines based on current stats if no completed assessments exist
     const defaultData = {
