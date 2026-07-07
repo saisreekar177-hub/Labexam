@@ -1000,7 +1000,7 @@ export default function FacultyDashboard() {
                   {/* Question Bank summary cards */}
                   <div className="space-y-3">
                     <h3 className="font-bold text-slate-900 text-xs uppercase tracking-wider">Question Bank Summary</h3>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                       <div className="bg-white p-4 border border-slate-200 rounded-lg shadow-2xs">
                         <p className="text-slate-400 font-semibold uppercase text-[9px]">Total Questions</p>
                         <p className="text-xl font-extrabold text-slate-900 mt-1">{totalQuestionsCount}</p>
@@ -1008,10 +1008,6 @@ export default function FacultyDashboard() {
                       <div className="bg-white p-4 border border-slate-200 rounded-lg shadow-2xs">
                         <p className="text-slate-400 font-semibold uppercase text-[9px]">Coding Core</p>
                         <p className="text-xl font-extrabold text-slate-900 mt-1">{codingCoreQuestionsCount}</p>
-                      </div>
-                      <div className="bg-white p-4 border border-slate-200 rounded-lg shadow-2xs">
-                        <p className="text-slate-400 font-semibold uppercase text-[9px]">Added (30d)</p>
-                        <p className="text-xl font-extrabold text-slate-900 mt-1">{addedRecentlyQuestionsCount}</p>
                       </div>
                       <div className="bg-white p-4 border border-slate-200 rounded-lg shadow-2xs">
                         <p className="text-slate-400 font-semibold uppercase text-[9px]">Frequently Used</p>
