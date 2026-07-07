@@ -602,8 +602,9 @@ except Exception:
         } catch (e) {}
       }
 
-      // Fallback to JS/TS python simulator if interpreter is not configured/installed (e.g. Vercel)
-      if (result.error && (result.error.includes("ENOENT") || result.error.includes("not found"))) {
+      // Fallback to JS/TS python simulator if interpreter is not configured/installed (e.g. Vercel or Windows app execution alias)
+      const isCmdNotFound = result.code === 9009 || (result.stderr && result.stderr.includes("Python was not found"));
+      if (isCmdNotFound || (result.error && (result.error.includes("ENOENT") || result.error.includes("not found")))) {
         const simulated = simulatePython(questionTitle || "", code, input || "");
         return NextResponse.json({
           status: "success",
