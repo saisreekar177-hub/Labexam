@@ -1510,9 +1510,9 @@ export default function FacultyDashboard() {
                       className="w-full text-slate-900 border border-slate-200 rounded-md px-3 py-2 bg-white focus:outline-hidden focus:ring-1 focus:ring-navy-900"
                     >
                       <option value="">-- Select Subject --</option>
-                      <option value="IT101">IT101 - Programming in C</option>
-                      <option value="IT102">IT102 - Python Programming</option>
-                      <option value="IT201">IT201 - Java Programming</option>
+                      <option value="IT101">Programming in C</option>
+                      <option value="IT102">Python Programming</option>
+                      <option value="IT201">Java Programming</option>
                     </select>
                   </div>
 

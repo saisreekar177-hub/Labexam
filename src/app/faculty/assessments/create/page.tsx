@@ -286,9 +286,9 @@ export default function CreateAssessment() {
                       className={`w-full text-slate-900 border ${errors.subject ? "border-rose-500" : "border-slate-200"} rounded-md px-3 py-2 bg-white focus:outline-hidden focus:ring-1 focus:ring-navy-900`}
                     >
                       <option value="">-- Select Subject --</option>
-                      <option value="IT101">IT101 - Programming in C</option>
-                      <option value="IT102">IT102 - Python Programming</option>
-                      <option value="IT201">IT201 - Java Programming</option>
+                      <option value="IT101">Programming in C</option>
+                      <option value="IT102">Python Programming</option>
+                      <option value="IT201">Java Programming</option>
                     </select>
                     {errors.subject && <p className="text-rose-600 text-[10px] mt-0.5 font-semibold">{errors.subject}</p>}
                   </div>
