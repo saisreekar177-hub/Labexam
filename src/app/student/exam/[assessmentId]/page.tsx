@@ -724,7 +724,11 @@ export default function StudentExamWorkspace({ params }: PageProps) {
           outputMessage += `-----------------------------\n`;
           outputMessage += `Test Case 1: ${isMatch ? "PASSED [OK]" : "FAILED [WRONG ANSWER]"}\n`;
           outputMessage += `  Input:    ${inputToRun}\n`;
-          outputMessage += `  Expected: ${currentQuestion.sampleOutput}\n`;
+          if (isMatch) {
+            outputMessage += `  Expected: ${currentQuestion.sampleOutput}\n`;
+          } else {
+            outputMessage += `  Expected: [Hidden - Output Mismatch]\n`;
+          }
           outputMessage += `  Actual:   ${stdout}\n`;
           
           if (isMatch) {

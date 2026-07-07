@@ -687,7 +687,7 @@ export function simulatePython(questionTitle: string, userCode: string, input: s
     } else {
       return {
         stdout: actualOutput,
-        stderr: `AssertionError: The output does not match expected output.\nExpected: ${expectedOutput}\nActual: ${actualOutput}`,
+        stderr: `AssertionError: The output does not match the expected test case output.\nActual: ${actualOutput}`,
         exitCode: 1
       };
     }
