@@ -108,6 +108,13 @@ export default function ReportsDashboardView({ isStandalone = false }: ReportsDa
     saveReports(updated);
     setShowGenerateModal(false);
     
+    // Automatically navigate to view details
+    if (scheduleForm.category === "Student") {
+      router.push(`/faculty/reports/student-scorecard/238U1A0419/${scheduleForm.assessmentId || "5"}`);
+    } else {
+      router.push(`/faculty/reports/${newReport.id}`);
+    }
+    
     // Clear form
     setScheduleForm({
       title: "",
@@ -118,9 +125,6 @@ export default function ReportsDashboardView({ isStandalone = false }: ReportsDa
       autoGenerate: false
     });
     setSelectedSubject("");
-
-    // Automatically navigate to view details
-    router.push(`/faculty/reports/${newReport.id}`);
   };
 
   // Handler: Schedule Report
@@ -427,7 +431,13 @@ export default function ReportsDashboardView({ isStandalone = false }: ReportsDa
                       <tr key={rep.id} className="hover:bg-slate-50/50">
                         <td className="py-3 px-4">
                           <button 
-                            onClick={() => router.push(`/faculty/reports/${rep.id}`)}
+                            onClick={() => {
+                              if (rep.category === "Student") {
+                                router.push(`/faculty/reports/student-scorecard/238U1A0419/${rep.assessmentId || "5"}`);
+                              } else {
+                                router.push(`/faculty/reports/${rep.id}`);
+                              }
+                            }}
                             className="font-bold text-slate-900 hover:text-blue-700 hover:underline text-left outline-hidden"
                           >
                             {rep.name}
@@ -452,7 +462,13 @@ export default function ReportsDashboardView({ isStandalone = false }: ReportsDa
                         <td className="py-3 px-4 text-center font-bold font-mono text-slate-800">{rep.downloadCount}</td>
                         <td className="py-3 px-4 text-right space-x-1">
                           <button 
-                            onClick={() => router.push(`/faculty/reports/${rep.id}`)}
+                            onClick={() => {
+                              if (rep.category === "Student") {
+                                router.push(`/faculty/reports/student-scorecard/238U1A0419/${rep.assessmentId || "5"}`);
+                              } else {
+                                router.push(`/faculty/reports/${rep.id}`);
+                              }
+                            }}
                             className="text-slate-450 hover:text-slate-800 p-1 hover:bg-slate-100 rounded"
                             title="Open layout inspector"
                           >

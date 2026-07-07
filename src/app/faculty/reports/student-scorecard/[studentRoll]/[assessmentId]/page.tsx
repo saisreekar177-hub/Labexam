@@ -263,17 +263,32 @@ export default function StudentScorecardReportPage({ params }: PageProps) {
     const facultyProfile = loadFacultyProfile();
     const sessionsList = loadExamSessions();
 
-    const foundStudent = studentsList.find(s => s.roll === studentRoll) || {
-      id: "demo-stud-id",
-      roll: studentRoll || "CANDIDATE",
-      name: "Student Candidate",
-      email: `${(studentRoll || "student").toLowerCase()}@gouthamitmw.edu`,
-      dept: "B.Tech CSE",
-      year: "3rd Year",
-      section: "A",
-      status: "Active" as const,
-      lastLogin: ""
-    };
+    let foundStudent = studentsList.find(s => s.roll === studentRoll);
+    if (studentRoll === "238U1A0419") {
+      foundStudent = {
+        id: "sree-koneti-id",
+        roll: "238U1A0419",
+        name: "Sree Koneti",
+        email: "sree.koneti@gouthamitmw.edu",
+        dept: "B.Tech ECE",
+        year: "3rd Year",
+        section: "A",
+        status: "Active" as const,
+        lastLogin: ""
+      };
+    } else if (!foundStudent) {
+      foundStudent = {
+        id: "demo-stud-id",
+        roll: studentRoll || "CANDIDATE",
+        name: "Student Candidate",
+        email: `${(studentRoll || "student").toLowerCase()}@gouthamitmw.edu`,
+        dept: "B.Tech CSE",
+        year: "3rd Year",
+        section: "A",
+        status: "Active" as const,
+        lastLogin: ""
+      };
+    }
     setStudent(foundStudent);
 
     // 2. Resolve assessment (with fallback for demo Python Lab Assessment)
@@ -291,16 +306,42 @@ export default function StudentScorecardReportPage({ params }: PageProps) {
     setAssessment(foundAssessment);
 
     // 3. Resolve session (with fallback)
-    const foundSession = sessionsList.find(
+    let foundSession = sessionsList.find(
       s => s.studentRoll === foundStudent.roll && s.assessmentId === foundAssessment.id
-    ) || {
-      id: "sess_" + foundStudent.roll,
-      studentRoll: foundStudent.roll,
-      assessmentId: foundAssessment.id,
-      questionOrder: JSON.stringify(["15", "21", "9", "8", "18"]),
-      startedAt: new Date(Date.now() - 3600 * 1000).toISOString(),
-      submittedAt: new Date().toISOString()
-    };
+    );
+    if (foundStudent.roll === "238U1A0419") {
+      const sreeSubmissions = {
+        "15": `n=int(input())\nx=input().split()\na=[]\nfor i in x:\n    a.append(int(i))\necount=0\nocount=0\nfor i in a:\n    if i%2==0:\n        ecount+=1\n    else:\n        ocount+=1\nprint("Even Count",ecount)\nprint("Odd Count",ocount)`,
+        "9": `s=input()\nn=len(s)\nf=s[0:n//2]\nse=s[n//2:]\nse=se[::-1]\nif f==se:\n    print("Mirror Word")\nelse:\n    print("No")`
+      };
+      
+      const sreeMetadata = {
+        submissions: sreeSubmissions,
+        warningsCount: 0,
+        warningsLogs: [],
+        lastActivity: "12:56 PM - Exam Submitted",
+        status: "Submitted"
+      };
+
+      foundSession = {
+        id: "sess_238U1A0419",
+        studentRoll: "238U1A0419",
+        assessmentId: foundAssessment.id,
+        questionOrder: JSON.stringify(["15", "21", "9", "8", "18"]),
+        startedAt: new Date("2026-06-21T12:46:05").toISOString(),
+        submittedAt: new Date("2026-06-21T12:56:02").toISOString(),
+        codeSubmissions: JSON.stringify(sreeMetadata)
+      };
+    } else if (!foundSession) {
+      foundSession = {
+        id: "sess_" + foundStudent.roll,
+        studentRoll: foundStudent.roll,
+        assessmentId: foundAssessment.id,
+        questionOrder: JSON.stringify(["15", "21", "9", "8", "18"]),
+        startedAt: new Date(Date.now() - 3600 * 1000).toISOString(),
+        submittedAt: new Date().toISOString()
+      };
+    }
     setSession(foundSession);
 
     // 4. Set faculty and questions
