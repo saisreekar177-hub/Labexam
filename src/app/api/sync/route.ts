@@ -8,7 +8,7 @@ export async function GET() {
     const questions = await db.question.findMany();
     const reports = await db.reportLog.findMany();
 
-    const formattedStudents = students.map((s) => ({
+    const formattedStudents = students.map((s: any) => ({
       id: s.id,
       roll: s.roll,
       name: s.name,
@@ -22,7 +22,7 @@ export async function GET() {
       lastLogin: s.lastLogin || "",
     }));
 
-    const formattedQuestions = questions.map((q) => ({
+    const formattedQuestions = questions.map((q: any) => ({
       id: q.id,
       title: q.title,
       language: q.language,
