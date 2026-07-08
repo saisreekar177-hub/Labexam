@@ -30,19 +30,28 @@ export async function POST(request: Request) {
     }
 
     if (!student) {
+      console.log(`[STUDENT LOGIN FAIL] Student with roll number: ${rollNumber.toUpperCase()} not found in database.`);
       return NextResponse.json(
-        { status: "error", message: "Invalid credentials" },
+        { status: "error", message: `Authentication failed: Student with roll number ${rollNumber.toUpperCase()} not registered.` },
         { status: 401 }
       );
     }
 
+    console.log(`[STUDENT LOGIN] Student ${student.roll} found. Verifying password...`);
     const isPasswordValid = comparePassword(password, student.password);
     if (!isPasswordValid) {
+      const parts = student.password.split(":");
+      let reason = "Password mismatch.";
+      if (parts.length !== 2) {
+        reason = "Stored password hash format is corrupted or missing salt:hash separator.";
+      }
+      console.log(`[STUDENT LOGIN FAIL] Student ${student.roll} password mismatch. Reason: ${reason}`);
       return NextResponse.json(
-        { status: "error", message: "Invalid credentials" },
+        { status: "error", message: `Authentication failed: ${reason}` },
         { status: 401 }
       );
     }
+    console.log(`[STUDENT LOGIN SUCCESS] Student ${student.roll} logged in successfully.`);
 
     // Update last login
     const updatedStudent = await db.student.update({

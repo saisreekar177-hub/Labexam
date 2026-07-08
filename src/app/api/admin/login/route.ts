@@ -30,19 +30,28 @@ export async function POST(request: Request) {
     }
 
     if (!admin) {
+      console.log(`[ADMIN LOGIN FAIL] Admin with email: ${email} not found in database.`);
       return NextResponse.json(
-        { status: "error", message: "Invalid credentials" },
+        { status: "error", message: `Authentication failed: Admin record for '${email}' not registered.` },
         { status: 401 }
       );
     }
 
+    console.log(`[ADMIN LOGIN] Admin '${admin.email}' found. Verifying password...`);
     const isPasswordValid = comparePassword(password, admin.password);
     if (!isPasswordValid) {
+      const parts = admin.password.split(":");
+      let reason = "Password mismatch.";
+      if (parts.length !== 2) {
+        reason = "Stored password hash format is corrupted or missing salt:hash separator.";
+      }
+      console.log(`[ADMIN LOGIN FAIL] Admin '${admin.email}' password mismatch. Reason: ${reason}`);
       return NextResponse.json(
-        { status: "error", message: "Invalid credentials" },
+        { status: "error", message: `Authentication failed: ${reason}` },
         { status: 401 }
       );
     }
+    console.log(`[ADMIN LOGIN SUCCESS] Admin '${admin.email}' logged in successfully.`);
 
     const token = generateToken({
       id: admin.id,

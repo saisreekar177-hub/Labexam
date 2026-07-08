@@ -35,19 +35,28 @@ export async function POST(request: Request) {
     }
 
     if (!faculty) {
+      console.log(`[FACULTY LOGIN FAIL] Faculty with ID/Email: ${emailOrId} not found in database.`);
       return NextResponse.json(
-        { status: "error", message: "Invalid credentials" },
+        { status: "error", message: `Authentication failed: Faculty record for '${emailOrId}' not registered.` },
         { status: 401 }
       );
     }
 
+    console.log(`[FACULTY LOGIN] Faculty '${faculty.email}' found. Verifying password...`);
     const isPasswordValid = comparePassword(password, faculty.password);
     if (!isPasswordValid) {
+      const parts = faculty.password.split(":");
+      let reason = "Password mismatch.";
+      if (parts.length !== 2) {
+        reason = "Stored password hash format is corrupted or missing salt:hash separator.";
+      }
+      console.log(`[FACULTY LOGIN FAIL] Faculty '${faculty.email}' password mismatch. Reason: ${reason}`);
       return NextResponse.json(
-        { status: "error", message: "Invalid credentials" },
+        { status: "error", message: `Authentication failed: ${reason}` },
         { status: 401 }
       );
     }
+    console.log(`[FACULTY LOGIN SUCCESS] Faculty '${faculty.email}' logged in successfully.`);
 
     // Update last login
     const updatedFaculty = await db.faculty.update({
