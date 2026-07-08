@@ -3,11 +3,11 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "mongodb"
 }
 
 model Student {
-  id          String   @id @default(uuid())
+  id          String   @id @default(uuid()) @map("_id")
   roll        String   @unique
   name        String
   email       String   @unique
@@ -24,7 +24,7 @@ model Student {
 }
 
 model Faculty {
-  id          String   @id @default(uuid())
+  id          String   @id @default(uuid()) @map("_id")
   employeeId  String   @unique
   fullName    String
   email       String   @unique
@@ -39,7 +39,7 @@ model Faculty {
 }
 
 model Admin {
-  id        String   @id @default(uuid())
+  id        String   @id @default(uuid()) @map("_id")
   email     String   @unique
   password  String
   createdAt DateTime @default(now())
@@ -47,7 +47,7 @@ model Admin {
 }
 
 model Assessment {
-  id             String @id
+  id             String @id @map("_id")
   name           String
   subject        String
   duration       Int
@@ -59,7 +59,7 @@ model Assessment {
 }
 
 model Question {
-  id               String  @id
+  id               String  @id @map("_id")
   title            String
   language         String
   difficulty       String
@@ -88,7 +88,7 @@ model Question {
 }
 
 model ReportLog {
-  id            String @id
+  id            String @id @map("_id")
   name          String
   category      String
   generatedDate String
@@ -98,7 +98,7 @@ model ReportLog {
 }
 
 model ExamSession {
-  id              String  @id
+  id              String  @id @map("_id")
   studentRoll     String
   assessmentId    String
   questionOrder   String

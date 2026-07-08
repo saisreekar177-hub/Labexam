@@ -3,8 +3,8 @@ import { db } from "@/lib/db";
 
 export async function GET() {
   try {
-    // Run a simple lightweight raw SQL query to verify connection and keep it alive
-    await db.$queryRaw`SELECT 1`;
+    // Run a simple lightweight query to verify connection and keep it warm
+    await db.student.findFirst({ select: { id: true } });
     return NextResponse.json({
       status: "success",
       message: "Database ping succeeded. Connection is warm.",
