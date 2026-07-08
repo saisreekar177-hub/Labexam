@@ -29,9 +29,10 @@ async function main() {
     const adminsRes = await pgPool.query('SELECT * FROM "Admin"');
     console.log(`Found ${adminsRes.rows.length} Admins in PostgreSQL.`);
     for (const row of adminsRes.rows) {
+      const { id, ...data } = row;
       await prisma.admin.upsert({
         where: { id: row.id },
-        update: row,
+        update: data,
         create: row
       });
     }
@@ -41,9 +42,10 @@ async function main() {
     const facultyRes = await pgPool.query('SELECT * FROM "Faculty"');
     console.log(`Found ${facultyRes.rows.length} Faculty in PostgreSQL.`);
     for (const row of facultyRes.rows) {
+      const { id, ...data } = row;
       await prisma.faculty.upsert({
         where: { id: row.id },
-        update: row,
+        update: data,
         create: row
       });
     }
@@ -53,9 +55,10 @@ async function main() {
     const studentRes = await pgPool.query('SELECT * FROM "Student"');
     console.log(`Found ${studentRes.rows.length} Students in PostgreSQL.`);
     for (const row of studentRes.rows) {
+      const { id, ...data } = row;
       await prisma.student.upsert({
         where: { id: row.id },
-        update: row,
+        update: data,
         create: row
       });
     }
@@ -65,9 +68,10 @@ async function main() {
     const assessmentRes = await pgPool.query('SELECT * FROM "Assessment"');
     console.log(`Found ${assessmentRes.rows.length} Assessments in PostgreSQL.`);
     for (const row of assessmentRes.rows) {
+      const { id, ...data } = row;
       await prisma.assessment.upsert({
         where: { id: row.id },
-        update: row,
+        update: data,
         create: row
       });
     }
@@ -77,9 +81,10 @@ async function main() {
     const questionRes = await pgPool.query('SELECT * FROM "Question"');
     console.log(`Found ${questionRes.rows.length} Questions in PostgreSQL.`);
     for (const row of questionRes.rows) {
+      const { id, ...data } = row;
       await prisma.question.upsert({
         where: { id: row.id },
-        update: row,
+        update: data,
         create: row
       });
     }
@@ -89,9 +94,10 @@ async function main() {
     const reportRes = await pgPool.query('SELECT * FROM "ReportLog"');
     console.log(`Found ${reportRes.rows.length} ReportLogs in PostgreSQL.`);
     for (const row of reportRes.rows) {
+      const { id, ...data } = row;
       await prisma.reportLog.upsert({
         where: { id: row.id },
-        update: row,
+        update: data,
         create: row
       });
     }
@@ -101,16 +107,10 @@ async function main() {
     const sessionRes = await pgPool.query('SELECT * FROM "ExamSession"');
     console.log(`Found ${sessionRes.rows.length} ExamSessions in PostgreSQL.`);
     for (const row of sessionRes.rows) {
+      const { id, ...data } = row;
       await prisma.examSession.upsert({
         where: { id: row.id },
-        update: {
-          studentRoll: row.studentRoll,
-          assessmentId: row.assessmentId,
-          questionOrder: row.questionOrder,
-          startedAt: row.startedAt,
-          submittedAt: row.submittedAt,
-          codeSubmissions: row.codeSubmissions
-        },
+        update: data,
         create: row
       });
     }
