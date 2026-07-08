@@ -17,7 +17,7 @@ if (typeof window === "undefined") {
       connectionString: process.env.DATABASE_URL,
       ssl: isLocal ? false : { rejectUnauthorized: false },
       connectionTimeoutMillis: 30000, // Wait up to 30 seconds for connections (Neon cold starts)
-      max: 20, // Limit connection pool size
+      max: 4, // Optimized for serverless concurrency to prevent DB connection limits
       idleTimeoutMillis: 30000, // Close idle connections after 30 seconds
     });
   }
