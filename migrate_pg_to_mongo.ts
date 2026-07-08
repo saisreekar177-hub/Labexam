@@ -20,8 +20,15 @@ async function main() {
     ssl: { rejectUnauthorized: false }
   });
 
+  console.log("Using MongoDB URL:", mongoUrl.replace(/:[^:@]+@/, ":****@"));
   console.log("Connecting to MongoDB...");
-  const prisma = new PrismaClient();
+  const prisma = new PrismaClient({
+    datasources: {
+      db: {
+        url: mongoUrl
+      }
+    }
+  });
 
   try {
     // 1. Migrate Admin
