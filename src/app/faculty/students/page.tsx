@@ -484,7 +484,7 @@ export default function StudentManagement() {
                         className="w-full border border-slate-250 rounded px-2 py-1 bg-white focus:outline-hidden"
                       >
                         <option value="CSE">CSE</option>
-                        <option value="IT">IT</option>
+                        <option value="AIML">AIML</option>
                         <option value="ECE">ECE</option>
                         <option value="EEE">EEE</option>
                       </select>

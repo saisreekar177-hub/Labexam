@@ -234,7 +234,7 @@ export default function AddStudent() {
                   className="w-full text-slate-900 border border-slate-200 rounded px-2.5 py-1.5 bg-white focus:outline-hidden focus:ring-1 focus:ring-navy-900"
                 >
                   <option value="CSE">CSE</option>
-                  <option value="IT">IT</option>
+                  <option value="AIML">AIML</option>
                   <option value="ECE">ECE</option>
                   <option value="EEE">EEE</option>
                   <option value="MECH">MECH</option>
