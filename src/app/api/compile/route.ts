@@ -1,8 +1,20 @@
 import { NextResponse } from "next/server";
-import { spawn } from "child_process";
+import { spawn, exec } from "child_process";
 import fs from "fs";
 import path from "path";
 import os from "os";
+import { promisify } from "util";
+
+const execAsync = promisify(exec);
+
+async function isDockerAvailable(): Promise<boolean> {
+  try {
+    await execAsync("docker ps");
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 // Helper to run code with a timeout and stdin feed
 const runProcess = (
@@ -742,12 +754,15 @@ export async function POST(request: Request) {
       );
     }
 
-    const tempDir = os.tmpdir();
     // Unique temp file name
     const fileId = `${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
 
     if (language === "python" || language === "python3") {
-      tempFilePath = path.join(tempDir, `temp_code_${fileId}.py`);
+      const sandboxDir = path.join(process.cwd(), "sandbox");
+      if (!fs.existsSync(sandboxDir)) {
+        fs.mkdirSync(sandboxDir, { recursive: true });
+      }
+      tempFilePath = path.join(sandboxDir, `temp_code_${fileId}.py`);
       
       let finalCode = code;
       const hasPrint = /\bprint\b|\bsys\.stdout\.write\b/.test(code);
@@ -815,11 +830,35 @@ except Exception:
 
       fs.writeFileSync(tempFilePath, finalCode);
 
-      let result = await runProcess("python", [tempFilePath], input || "");
-      
-      // Fallback to python3 if python ENOENT
-      if (result.error && (result.error.includes("ENOENT") || result.error.includes("not found"))) {
-        result = await runProcess("python3", [tempFilePath], input || "");
+      const dockerActive = await isDockerAvailable();
+      let result;
+
+      if (dockerActive) {
+        const absoluteSandboxDir = path.resolve(sandboxDir).replace(/\\/g, '/');
+        const cmd = "docker";
+        const args = [
+          "run",
+          "--rm",
+          "-i",
+          "--net=none",
+          "--memory=128m",
+          "--cpus=0.5",
+          "-v",
+          `${absoluteSandboxDir}:/app`,
+          "-w",
+          "/app",
+          "python-sandbox",
+          "python",
+          `temp_code_${fileId}.py`
+        ];
+        result = await runProcess(cmd, args, input || "");
+      } else {
+        result = await runProcess("python", [tempFilePath], input || "");
+        
+        // Fallback to python3 if python ENOENT
+        if (result.error && (result.error.includes("ENOENT") || result.error.includes("not found"))) {
+          result = await runProcess("python3", [tempFilePath], input || "");
+        }
       }
 
       // Cleanup
