@@ -402,6 +402,39 @@ export default function ReportDetailsPage({ params }: PageProps) {
     return { primaryAssessment: found, primaryAssessmentId: bestId };
   }, [assessments, examSessions]);
 
+  const primaryAssessmentQuestions = React.useMemo(() => {
+    let questionIds: string[] = [];
+    const representativeSession = examSessions.find(es => es.assessmentId === primaryAssessmentId && es.questionOrder);
+    if (representativeSession) {
+      try {
+        questionIds = JSON.parse(representativeSession.questionOrder);
+      } catch (e) {}
+    }
+    if (questionIds.length === 0) {
+      const language = primaryAssessment?.subject?.toLowerCase().includes("py") ? "python" : "cpp";
+      questionIds = questions.filter(q => q.language.toLowerCase() === language).map(q => q.id).slice(0, 5);
+    }
+    if (questionIds.length === 0) {
+      questionIds = ["15", "21", "9", "8", "18"];
+    }
+
+    return questionIds.map((id, index) => {
+      return questions.find(q => q.id === id) || defaultQuestionsList[id] || {
+        id,
+        title: id === "15" ? "Count of Even and Odd Numbers" :
+               id === "21" ? "Remove Duplicate Characters" :
+               id === "9" ? "Mirror Word Check" :
+               id === "8" ? "Character Frequency Winner" :
+               id === "18" ? "Count and Sum of Positive and Negative Numbers" : `Assessment Question ${index + 1}`,
+        marks: 10
+      };
+    });
+  }, [primaryAssessment, primaryAssessmentId, examSessions, questions]);
+
+  const maxMarks = React.useMemo(() => {
+    return primaryAssessmentQuestions.reduce((acc, q) => acc + (q.marks || 10), 0) || 50;
+  }, [primaryAssessmentQuestions]);
+
   // Dynamic selector logic to remove static mock data
   const studentsWithScores = React.useMemo(() => {
     return students.map((s) => {
@@ -421,29 +454,19 @@ export default function ReportDetailsPage({ params }: PageProps) {
           questionIds = JSON.parse(session.questionOrder);
         } catch (e) {}
       }
-      if (questionIds.length === 0) {
-        const anotherSession = examSessions.find(es => es.assessmentId === primaryAssessmentId && es.questionOrder);
-        if (anotherSession) {
-          try {
-            questionIds = JSON.parse(anotherSession.questionOrder);
-          } catch (e) {}
-        }
-      }
-      if (questionIds.length === 0) {
-        questionIds = ["15", "21", "9", "8", "18"];
-      }
-
-      const resolved = questionIds.map((id, index) => {
-        return questions.find(q => q.id === id) || defaultQuestionsList[id] || {
-          id,
-          title: id === "15" ? "Count of Even and Odd Numbers" :
-                 id === "21" ? "Remove Duplicate Characters" :
-                 id === "9" ? "Mirror Word Check" :
-                 id === "8" ? "Character Frequency Winner" :
-                 id === "18" ? "Count and Sum of Positive and Negative Numbers" : `Assessment Question ${index + 1}`,
-          marks: 10
-        };
-      });
+      const resolved = questionIds.length > 0 
+        ? questionIds.map((id, index) => {
+            return questions.find(q => q.id === id) || defaultQuestionsList[id] || {
+              id,
+              title: id === "15" ? "Count of Even and Odd Numbers" :
+                     id === "21" ? "Remove Duplicate Characters" :
+                     id === "9" ? "Mirror Word Check" :
+                     id === "8" ? "Character Frequency Winner" :
+                     id === "18" ? "Count and Sum of Positive and Negative Numbers" : `Assessment Question ${index + 1}`,
+              marks: 10
+            };
+          })
+        : primaryAssessmentQuestions;
 
       // Resolve code submissions from session first
       let sessionCodes: Record<string, string> = {};
@@ -498,57 +521,62 @@ export default function ReportDetailsPage({ params }: PageProps) {
       if (b.score === null) return -1;
       return b.score - a.score;
     });
-  }, [students, examSessions, assessments, questions, primaryAssessmentId]);
+  }, [students, examSessions, assessments, questions, primaryAssessmentId, primaryAssessmentQuestions]);
 
   const dynamicQuestions = React.useMemo(() => {
-    return questions.map((q) => {
-      // Find sessions where students actually submitted the assessment containing this question
-      const totalSubmissions = examSessions.filter(es => es.submittedAt && es.assessmentId === primaryAssessmentId).length;
-      
-      const attempts = totalSubmissions;
+    return primaryAssessmentQuestions.map((q) => {
+      let attempts = 0;
       let correct = 0;
-      let incorrect = 0;
       
-      // Calculate from student performance using mapped actual scores
-      const submittedStudents = studentsWithScores.filter(s => s.statusStr === "SUBMITTED");
-      
-      const submittedCount = submittedStudents.length;
-      if (submittedCount > 0) {
-        let totalPct = 0;
-        submittedStudents.forEach(s => {
-          const score = s.score ?? 0;
-          totalPct += (score / 50);
-        });
-        const avgPct = totalPct / submittedCount;
+      studentsWithScores.forEach(s => {
+        if (s.statusStr === "NOT ATTEMPTED" || s.status === "Suspended") return;
+
+        const session = examSessions.find(es => es.studentRoll === s.roll && es.assessmentId === primaryAssessmentId);
+        let sessionCodes: Record<string, string> = {};
+        if (session && session.codeSubmissions) {
+          try {
+            const parsed = JSON.parse(session.codeSubmissions);
+            if (parsed && typeof parsed === "object" && parsed.submissions && typeof parsed.submissions === "object") {
+              sessionCodes = parsed.submissions;
+            } else if (parsed && typeof parsed === "object") {
+              sessionCodes = parsed;
+            }
+          } catch (e) {}
+        }
+
+        const key = `examcoder_code_${s.roll}_${primaryAssessmentId}_${q.id}`;
+        const localCode = sessionCodes[q.id || ""] || (typeof window !== "undefined" ? window.localStorage.getItem(key) : null);
         
-        correct = Math.round(attempts * avgPct);
-        incorrect = attempts - correct;
-        
-        const successRateNum = (correct / (attempts || 1)) * 100;
-        const avgScoreVal = avgPct * q.marks;
-        
-        return {
-          title: q.title,
-          attempts,
-          correct,
-          incorrect,
-          successRate: `${successRateNum.toFixed(1)}%`,
-          avgTime: attempts > 0 ? "25 mins" : "0 mins",
-          avgScore: `${avgScoreVal.toFixed(1)} / ${q.marks}`
-        };
-      } else {
-        return {
-          title: q.title,
-          attempts: 0,
-          correct: 0,
-          incorrect: 0,
-          successRate: "0.0%",
-          avgTime: "—",
-          avgScore: `0.0 / ${q.marks}`
-        };
-      }
+        const isAttempted = localCode !== null && localCode.trim() !== "" && 
+                            localCode.replace(/\s/g, "") !== `#Language:Python3.10defsolve():passsolve()`.replace(/\s/g, "") &&
+                            localCode.replace(/\s/g, "") !== `#Language:Python3.10defsolve():#WriteyourPythoncodeherepasssolve()`.replace(/\s/g, "");
+
+        if (isAttempted) {
+          attempts++;
+          const isCorrect = isCodeCorrect(q.title || "", localCode || "");
+          if (isCorrect) {
+            correct++;
+          }
+        }
+      });
+
+      const incorrect = attempts - correct;
+      const successRateNum = attempts > 0 ? (correct / attempts) * 100 : 0;
+      const successRate = `${successRateNum.toFixed(1)}%`;
+      const avgScoreVal = attempts > 0 ? (correct * (q.marks || 10)) / attempts : 0;
+      const avgScore = `${avgScoreVal.toFixed(1)} / ${q.marks || 10}`;
+
+      return {
+        title: q.title,
+        attempts,
+        correct,
+        incorrect,
+        successRate,
+        avgTime: attempts > 0 ? "25 mins" : "—",
+        avgScore
+      };
     });
-  }, [questions, examSessions, studentsWithScores, primaryAssessmentId]);
+  }, [primaryAssessmentQuestions, examSessions, studentsWithScores, primaryAssessmentId]);
 
   const dynamicSections = React.useMemo(() => {
     const sectionsMap: Record<string, typeof studentsWithScores> = {};
@@ -567,9 +595,9 @@ export default function ReportDetailsPage({ params }: PageProps) {
       
       const scores = submittedStudents.map(s => s.score as number);
       const avgScore = submittedCount ? (scores.reduce((a, b) => a + b, 0) / submittedCount) : 0;
-      const avgPercentage = submittedCount ? `${((avgScore / 50) * 100).toFixed(1)}%` : "N/A";
+      const avgPercentage = submittedCount ? `${((avgScore / maxMarks) * 100).toFixed(1)}%` : "N/A";
       
-      const passedCount = scores.filter(score => score >= 25).length;
+      const passedCount = scores.filter(score => score >= (maxMarks * 0.5)).length;
       const passPercentage = submittedCount ? `${((passedCount / submittedCount) * 100).toFixed(1)}%` : "0.0%";
       
       return {
@@ -579,7 +607,7 @@ export default function ReportDetailsPage({ params }: PageProps) {
         passPercentage
       };
     }).sort((a, b) => a.name.localeCompare(b.name));
-  }, [studentsWithScores]);
+  }, [studentsWithScores, maxMarks]);
 
   const dynamicDepts = React.useMemo(() => {
     return assessments.map((a) => {
@@ -594,7 +622,7 @@ export default function ReportDetailsPage({ params }: PageProps) {
         const student = studentsWithScores.find(s => s.roll === es.studentRoll);
         if (student) {
           const score = student.score ?? 0;
-          if (score >= 25) {
+          if (score >= (maxMarks * 0.5)) {
             passedCount++;
           }
         }
@@ -612,14 +640,14 @@ export default function ReportDetailsPage({ params }: PageProps) {
         obeIndex
       };
     });
-  }, [assessments, students, examSessions, studentsWithScores]);
+  }, [assessments, students, examSessions, studentsWithScores, maxMarks]);
 
   const dynamicAtRisk = React.useMemo(() => {
     return studentsWithScores
       .map(s => {
         const isSuspended = s.status === "Suspended";
         const hasScore = s.score !== null;
-        const percentage = hasScore ? (s.score! / 50) * 100 : 0;
+        const percentage = hasScore ? (s.score! / maxMarks) * 100 : 0;
         
         return {
           roll: s.roll,
@@ -632,7 +660,7 @@ export default function ReportDetailsPage({ params }: PageProps) {
       })
       .filter(s => s.isAtRisk)
       .slice(0, 5);
-  }, [studentsWithScores]);
+  }, [studentsWithScores, maxMarks]);
 
   const dynamicSummary = React.useMemo(() => {
     const total = studentsWithScores.length;
@@ -663,26 +691,26 @@ export default function ReportDetailsPage({ params }: PageProps) {
 
     const scores = submittedStudents.map(s => s.score as number);
     const avg = scores.reduce((a, b) => a + b, 0) / submittedCount;
-    const passCount = scores.filter(s => s >= 25).length;
+    const passCount = scores.filter(s => s >= (maxMarks * 0.5)).length;
     
     return {
       passRate: `${((passCount / submittedCount) * 100).toFixed(1)}%`,
-      avgScore: `${avg.toFixed(1)} / 50`,
-      highest: `${Math.max(...scores)} / 50`,
-      lowest: `${Math.min(...scores)} / 50`,
-      submitRate: `${((submittedCount / total) * 100).toFixed(0)}%`, // Wait, could go slightly above if needed or just bound at 100%
+      avgScore: `${avg.toFixed(1)} / ${maxMarks}`,
+      highest: `${Math.max(...scores)} / ${maxMarks}`,
+      lowest: `${Math.min(...scores)} / ${maxMarks}`,
+      submitRate: `${((submittedCount / total) * 100).toFixed(0)}%`,
       totalStudentsCount: total
     };
-  }, [studentsWithScores]);
+  }, [studentsWithScores, maxMarks]);
 
   const dynamicDistributions = React.useMemo(() => {
     const appearedStudents = studentsWithScores.filter(s => s.statusStr !== "NOT ATTEMPTED");
     const total = appearedStudents.length || 1;
     const submittedStudents = studentsWithScores.filter(s => s.score !== null && s.statusStr === "SUBMITTED");
-    const exc = submittedStudents.filter(s => s.score! >= 45).length;
-    const gd = submittedStudents.filter(s => s.score! >= 35 && s.score! < 45).length;
-    const sat = submittedStudents.filter(s => s.score! >= 25 && s.score! < 35).length;
-    const risk = submittedStudents.filter(s => s.score! < 25).length + studentsWithScores.filter(s => s.status === "Suspended").length;
+    const exc = submittedStudents.filter(s => s.score! >= (maxMarks * 0.9)).length;
+    const gd = submittedStudents.filter(s => s.score! >= (maxMarks * 0.7) && s.score! < (maxMarks * 0.9)).length;
+    const sat = submittedStudents.filter(s => s.score! >= (maxMarks * 0.5) && s.score! < (maxMarks * 0.7)).length;
+    const risk = submittedStudents.filter(s => s.score! < (maxMarks * 0.5)).length + studentsWithScores.filter(s => s.status === "Suspended").length;
     
     return {
       excellent: { pct: Math.round((exc / total) * 100), count: exc },
@@ -690,7 +718,7 @@ export default function ReportDetailsPage({ params }: PageProps) {
       satisfactory: { pct: Math.round((sat / total) * 100), count: sat },
       atRisk: { pct: Math.round((risk / total) * 100), count: risk }
     };
-  }, [studentsWithScores]);
+  }, [studentsWithScores, maxMarks]);
 
   const handlePrint = () => {
     const originalTitle = document.title;
@@ -721,10 +749,10 @@ export default function ReportDetailsPage({ params }: PageProps) {
       studentsWithScores.forEach((student, index) => {
         const isSuspended = student.status === "Suspended";
         const hasScore = student.score !== null;
-        const percentage = hasScore ? `${((student.score! / 50) * 100).toFixed(1)}%` : "N/A";
-        const scoreDisplay = hasScore ? `${student.score} / 50` : "N/A";
+        const percentage = hasScore ? `${((student.score! / maxMarks) * 100).toFixed(1)}%` : "N/A";
+        const scoreDisplay = hasScore ? `${student.score} / ${maxMarks}` : "N/A";
         const statusStr = isSuspended ? "DISQUALIFIED" : student.statusStr;
-        csvContent += `"${(!hasScore || isSuspended) ? "—" : index + 1}","${student.roll}","${student.name}","${isSuspended ? "0 / 50" : scoreDisplay}","${isSuspended ? "0%" : percentage}","${statusStr || "NOT ATTEMPTED"}"\n`;
+        csvContent += `"${(!hasScore || isSuspended) ? "—" : index + 1}","${student.roll}","${student.name}","${isSuspended ? `0 / ${maxMarks}` : scoreDisplay}","${isSuspended ? "0%" : percentage}","${statusStr || "NOT ATTEMPTED"}"\n`;
       });
     } else if (report.category === "Question") {
       csvContent += "Question Description,Attempts,Correct,Incorrect,Success Rate,Avg Time,Avg Score\n";
@@ -749,7 +777,7 @@ export default function ReportDetailsPage({ params }: PageProps) {
     } else {
       // Assessment / Semester
       csvContent += "Assessment Name,Subject,Date,Duration,Total Students,Total Marks\n";
-      csvContent += `"${primaryAssessment.name}","${primaryAssessment.subject}","${primaryAssessment.date}","${primaryAssessment.duration} minutes","${dynamicSummary.totalStudentsCount} students","50 Points"\n\n`;
+      csvContent += `"${primaryAssessment.name}","${primaryAssessment.subject}","${primaryAssessment.date}","${primaryAssessment.duration} minutes","${dynamicSummary.totalStudentsCount} students","${maxMarks} Points"\n\n`;
       csvContent += "Pass Rate,Average Score,Highest Score,Lowest Score,Submission Rate\n";
       csvContent += `"${dynamicSummary.passRate}","${dynamicSummary.avgScore}","${dynamicSummary.highest}","${dynamicSummary.lowest}","${dynamicSummary.submitRate}"\n`;
     }
@@ -1089,8 +1117,8 @@ export default function ReportDetailsPage({ params }: PageProps) {
                             <td className="py-1.5 font-bold text-slate-955">{metrics.status}</td>
                           </tr>
                           <tr className="align-baseline">
-                            <td className="py-1.5 pr-4 text-slate-500 font-semibold">Marks Obtained</td>
-                            <td className="py-1.5 font-bold text-slate-955 font-mono text-[10.5px]">{metrics.marks} / 50</td>
+                            <td className="py-1.5 pr-4 text-slate-500 font-semibold font-sans text-xs">Marks Obtained</td>
+                            <td className="py-1.5 font-bold text-slate-955 font-mono text-[10.5px]">{metrics.marks} / {maxMarks}</td>
                           </tr>
                           <tr className="align-baseline">
                             <td className="py-1.5 pr-4 text-slate-500 font-semibold">Questions Attempted</td>
@@ -1250,7 +1278,7 @@ export default function ReportDetailsPage({ params }: PageProps) {
                         {studentsWithScores.map((student) => {
                           const isSuspended = student.status === "Suspended";
                           const scoreDisplay = isSuspended ? "0" : (student.score !== null ? student.score : "—");
-                          const statusText = isSuspended ? "FAIL" : (student.score !== null ? (student.score >= 25 ? "PASS" : "FAIL") : "N/A");
+                          const statusText = isSuspended ? "FAIL" : (student.score !== null ? (student.score >= (maxMarks * 0.5) ? "PASS" : "FAIL") : "N/A");
                           const appearedStatus = student.statusStr === "NOT ATTEMPTED" ? "No" : "Yes";
                           
                           return (
@@ -1277,7 +1305,7 @@ export default function ReportDetailsPage({ params }: PageProps) {
                                 </span>
                               </td>
                               <td className="py-3 px-3 text-center font-bold text-slate-900">
-                                {scoreDisplay} / 50
+                                {scoreDisplay} / {maxMarks}
                               </td>
                               <td className="py-3 px-3 text-center text-slate-800">
                                 {appearedStatus}

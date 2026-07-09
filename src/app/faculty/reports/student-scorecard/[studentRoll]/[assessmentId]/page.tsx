@@ -568,17 +568,20 @@ export default function StudentScorecardReportPage({ params }: PageProps) {
       timeTaken = `${minutes} min ${seconds} sec`;
     }
 
+    const maxMarks = resolved.reduce((acc, q) => acc + (q.marks || 10), 0) || 50;
+
     return {
       metrics: {
         roll: student.roll,
         name: student.name,
         dept: student.dept || "B.Tech CSE",
-        status: computedMarks >= 25 ? "PASS" : "FAIL",
+        status: computedMarks >= (maxMarks * 0.5) ? "PASS" : "FAIL",
         marks: computedMarks,
         attempted,
         totalQuestions: resolved.length,
         timeTaken,
-        submissionTime
+        submissionTime,
+        maxMarks
       },
       questionOutcomes: outcomes
     };
@@ -681,7 +684,7 @@ export default function StudentScorecardReportPage({ params }: PageProps) {
                   </tr>
                   <tr className="align-baseline">
                     <td className="py-2 pr-8 text-slate-600 font-normal text-right">Marks Obtained</td>
-                    <td className="py-2 pl-4 font-bold text-slate-950 text-left font-mono text-[13px]">{metrics.marks} / 50</td>
+                    <td className="py-2 pl-4 font-bold text-slate-950 text-left font-mono text-[13px]">{metrics.marks} / {metrics.maxMarks}</td>
                   </tr>
                   <tr className="align-baseline">
                     <td className="py-2 pr-8 text-slate-600 font-normal text-right">Questions Attempted</td>
