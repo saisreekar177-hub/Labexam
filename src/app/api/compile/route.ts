@@ -1036,16 +1036,23 @@ except Exception:
           finalCode = code + runnerExtension;
         }
 
-        console.log(`[JUPYTER BACKEND] Delegating compilation to Jupyter Server at ${jupyterUrl}`);
-        const result = await runCodeOnJupyter(jupyterUrl, jupyterToken, finalCode, input || "");
-        
-        return NextResponse.json({
-          status: "success",
-          stdout: result.stdout,
-          stderr: result.error ? `${result.error}\n${result.traceback?.join("\n") || ""}` : result.stderr,
-          exitCode: result.error ? 1 : 0,
-          error: result.error || null,
-        });
+        try {
+          const result = await runCodeOnJupyter(jupyterUrl, jupyterToken, finalCode, input || "");
+          
+          if (result.error === "JupyterRESTError" || result.stderr?.includes("Failed to compile/run code via Jupyter REST")) {
+            console.warn("[JUPYTER BACKEND] Jupyter service connection failed. Falling back to local sandbox/simulator.");
+          } else {
+            return NextResponse.json({
+              status: "success",
+              stdout: result.stdout,
+              stderr: result.error ? `${result.error}\n${result.traceback?.join("\n") || ""}` : result.stderr,
+              exitCode: result.error ? 1 : 0,
+              error: result.error || null,
+            });
+          }
+        } catch (jError) {
+          console.warn("[JUPYTER BACKEND] Jupyter connection failed with exception. Falling back to local execution.", jError);
+        }
       }
 
       let sandboxDir = "";
