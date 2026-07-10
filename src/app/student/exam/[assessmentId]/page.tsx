@@ -244,172 +244,192 @@ export default function StudentExamWorkspace({ params }: PageProps) {
 
   // Hydrate exam metadata and questions from localStorage
   useEffect(() => {
-    const assessments = loadAssessments();
-    const foundAssessment = assessments.find(a => a.id === assessmentId);
-    const allQuestions = loadQuestions();
+    let redirectTimer: NodeJS.Timeout;
 
-    if (foundAssessment) {
-      setScheduledDateStr(foundAssessment.date);
+    const checkAndHydrate = () => {
+      const assessments = loadAssessments();
+      const foundAssessment = assessments.find(a => a.id === assessmentId);
+      const allQuestions = loadQuestions();
 
-      // Resolve the student profile
-      const studentProfile = loadStudentProfile();
-      const studentRoll = studentProfile.roll || "DEMO_STUDENT";
+      if (foundAssessment) {
+        if (redirectTimer) clearTimeout(redirectTimer);
+        setScheduledDateStr(foundAssessment.date);
 
-      // Load linked question pool
-      let questionPool: any[] = [];
-      const stored = localStorage.getItem("examcoder_assessment_questions_" + assessmentId);
-      if (stored) {
-        try {
-          questionPool = JSON.parse(stored);
-        } catch (e) {}
-      }
-      if (!questionPool || questionPool.length === 0) {
-        questionPool = allQuestions.filter(q => q.status === "Active" || !q.status);
-      }
+        // Resolve the student profile
+        const studentProfile = loadStudentProfile();
+        const studentRoll = studentProfile.roll || "DEMO_STUDENT";
 
-      // Check if session exists for this student and this assessment to retrieve assigned subset
-      const sessions = loadExamSessions();
-      const existingSession = sessions.find(s => s.studentRoll === studentRoll && s.assessmentId === assessmentId);
-
-      const currentStatus = getAssessmentStatus(foundAssessment, studentRoll, sessions);
-      setAssessmentStatus(currentStatus);
-      setIsScheduledDate(currentStatus === "Active");
-
-      let assignedQuestions: any[] = [];
-      let initialWarnings = 0;
-      if (existingSession) {
-        // Load assigned questions in the stored order
-        const orderIds: string[] = JSON.parse(existingSession.questionOrder);
-        assignedQuestions = orderIds.map(id => questionPool.find(q => q.id === id)).filter(Boolean);
-        if (assignedQuestions.length === 0 && questionPool.length > 0) {
-          assignedQuestions = questionPool.slice(0, Math.min(5, questionPool.length));
-        }
-
-        // Parse existing session warnings Count
-        if (existingSession.codeSubmissions) {
+        // Load linked question pool
+        let questionPool: any[] = [];
+        const stored = localStorage.getItem("examcoder_assessment_questions_" + assessmentId);
+        if (stored) {
           try {
-            const parsed = JSON.parse(existingSession.codeSubmissions);
-            if (parsed && typeof parsed === 'object' && 'warningsCount' in parsed) {
-              initialWarnings = parsed.warningsCount || 0;
-            }
+            questionPool = JSON.parse(stored);
           } catch (e) {}
         }
-      } else {
-        // First time entering the exam: select a random subset of 5 questions
-        const shuffledPool = [...questionPool];
-        // Fisher-Yates shuffle
-        for (let i = shuffledPool.length - 1; i > 0; i--) {
-          const j = Math.floor(Math.random() * (i + 1));
-          [shuffledPool[i], shuffledPool[j]] = [shuffledPool[j], shuffledPool[i]];
-        }
-        const subsetSize = Math.min(5, shuffledPool.length);
-        assignedQuestions = shuffledPool.slice(0, subsetSize);
-
-        const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        const initialData = {
-          submissions: {},
-          warningsCount: 0,
-          warningsLogs: [`${timeStr} - Exam session initialized`],
-          lastActivity: `${timeStr} - Exam started`,
-          status: "Active"
-        };
-
-        // Save this new randomized order assigned to this student
-        const newSession = {
-          id: Date.now().toString() + "_" + Math.random().toString(36).substr(2, 9),
-          studentRoll: studentRoll,
-          assessmentId: assessmentId,
-          questionOrder: JSON.stringify(assignedQuestions.map(q => q.id)),
-          startedAt: new Date().toISOString(),
-          submittedAt: null,
-          codeSubmissions: JSON.stringify(initialData)
-        };
-        saveExamSessions([newSession, ...sessions]);
-      }
-      setWarningsCount(initialWarnings);
-
-      setExamData({
-        id: foundAssessment.id,
-        name: foundAssessment.name,
-        subject: foundAssessment.subject,
-        duration: foundAssessment.duration,
-        totalMarks: assignedQuestions.reduce((sum, q) => sum + (q.marks || 15), 0)
-      });
-
-      // Timer format
-      const hr = Math.floor(foundAssessment.duration / 60);
-      const min = foundAssessment.duration % 60;
-      const pad = (n: number) => String(n).padStart(2, "0");
-      setTimeLeft(`${pad(hr)}:${pad(min)}:00`);
-
-      if (assignedQuestions.length > 0) {
-        const mapped = assignedQuestions.map((q, idx) => {
-          return {
-            id: q.id,
-            num: idx + 1,
-            title: q.title,
-            difficulty: (q.difficulty === "Easy" || q.difficulty === "Medium" || q.difficulty === "Hard") ? q.difficulty : "Medium",
-            topic: q.topic || "General",
-            marks: q.marks || 15,
-            description: q.description || `Problem statement for "${q.title}". Write a program in the selected language to solve the challenge.`,
-            inputFormat: q.inputFormat || "Standard keyboard console input.",
-            outputFormat: q.outputFormat || "Standard output matching problem requirements.",
-            constraints: q.constraints || "Time: 2000ms\nMemory: 256MB",
-            sampleInput: q.sampleInput || "No sample input defined.",
-            sampleOutput: q.sampleOutput || "No sample output defined.",
-            explanation: q.explanation || "Process values dynamically.",
-            codeTemplates: (q.codeTemplates as any) || {
-              c: `// Language: C\n#include <stdio.h>\n\nint main() {\n    // solve\n    return 0;\n}`,
-              cpp: `// Language: C++17\n#include <iostream>\nusing namespace std;\n\nint main() {\n    // solve\n    return 0;\n}`,
-              java: `// Language: Java 17\nclass Solution {\n    public static void main(String[] args) {\n        // solve\n    }\n}`,
-              python: `# Language: Python 3.10\ndef solve():\n    pass\n\nsolve()`
-            }
-          };
-        });
-
-        setQuestions(mapped);
-        setCurrentQuestion(mapped[0]);
-
-        // Parse previous submissions
-        let savedSubmissions: Record<string, string> = {};
-        if (existingSession && existingSession.codeSubmissions) {
-          try {
-            const parsed = JSON.parse(existingSession.codeSubmissions);
-            if (parsed && typeof parsed === 'object') {
-              if (parsed.submissions) {
-                savedSubmissions = parsed.submissions;
-              } else {
-                savedSubmissions = parsed;
-              }
-            }
-          } catch (e) {}
+        if (!questionPool || questionPool.length === 0) {
+          questionPool = allQuestions.filter(q => q.status === "Active" || !q.status);
         }
 
-        const initialCodes: Record<string, string> = {};
-        mapped.forEach(mq => {
-          initialCodes[mq.id] = savedSubmissions[mq.id] || mq.codeTemplates.python;
-        });
-        setCodeContent(initialCodes);
+        // Check if session exists for this student and this assessment to retrieve assigned subset
+        const sessions = loadExamSessions();
+        const existingSession = sessions.find(s => s.studentRoll === studentRoll && s.assessmentId === assessmentId);
 
-        const initialStates: Record<string, "not-visited" | "visited" | "attempted" | "submitted"> = {};
-        mapped.forEach((mq, idx) => {
-          if (savedSubmissions[mq.id]) {
-            initialStates[mq.id] = "submitted";
-          } else {
-            initialStates[mq.id] = idx === 0 ? "visited" : "not-visited";
+        const currentStatus = getAssessmentStatus(foundAssessment, studentRoll, sessions);
+        setAssessmentStatus(currentStatus);
+        setIsScheduledDate(currentStatus === "Active");
+
+        let assignedQuestions: any[] = [];
+        let initialWarnings = 0;
+        if (existingSession) {
+          // Load assigned questions in the stored order
+          const orderIds: string[] = JSON.parse(existingSession.questionOrder);
+          assignedQuestions = orderIds.map(id => questionPool.find(q => q.id === id)).filter(Boolean);
+          if (assignedQuestions.length === 0 && questionPool.length > 0) {
+            assignedQuestions = questionPool.slice(0, Math.min(5, questionPool.length));
           }
+
+          // Parse existing session warnings Count
+          if (existingSession.codeSubmissions) {
+            try {
+              const parsed = JSON.parse(existingSession.codeSubmissions);
+              if (parsed && typeof parsed === 'object' && 'warningsCount' in parsed) {
+                initialWarnings = parsed.warningsCount || 0;
+              }
+            } catch (e) {}
+          }
+        } else {
+          // First time entering the exam: select a random subset of 5 questions
+          const shuffledPool = [...questionPool];
+          // Fisher-Yates shuffle
+          for (let i = shuffledPool.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [shuffledPool[i], shuffledPool[j]] = [shuffledPool[j], shuffledPool[i]];
+          }
+          const subsetSize = Math.min(5, shuffledPool.length);
+          assignedQuestions = shuffledPool.slice(0, subsetSize);
+
+          const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          const initialData = {
+            submissions: {},
+            warningsCount: 0,
+            warningsLogs: [`${timeStr} - Exam session initialized`],
+            lastActivity: `${timeStr} - Exam started`,
+            status: "Active"
+          };
+
+          // Save this new randomized order assigned to this student
+          const newSession = {
+            id: Date.now().toString() + "_" + Math.random().toString(36).substr(2, 9),
+            studentRoll: studentRoll,
+            assessmentId: assessmentId,
+            questionOrder: JSON.stringify(assignedQuestions.map(q => q.id)),
+            startedAt: new Date().toISOString(),
+            submittedAt: null,
+            codeSubmissions: JSON.stringify(initialData)
+          };
+          saveExamSessions([newSession, ...sessions]);
+        }
+        setWarningsCount(initialWarnings);
+
+        setExamData({
+          id: foundAssessment.id,
+          name: foundAssessment.name,
+          subject: foundAssessment.subject,
+          duration: foundAssessment.duration,
+          totalMarks: assignedQuestions.reduce((sum, q) => sum + (q.marks || 15), 0)
         });
-        setQuestionStates(initialStates);
+
+        // Timer format
+        const hr = Math.floor(foundAssessment.duration / 60);
+        const min = foundAssessment.duration % 60;
+        const pad = (n: number) => String(n).padStart(2, "0");
+        setTimeLeft(`${pad(hr)}:${pad(min)}:00`);
+
+        if (assignedQuestions.length > 0) {
+          const mapped = assignedQuestions.map((q, idx) => {
+            return {
+              id: q.id,
+              num: idx + 1,
+              title: q.title,
+              difficulty: (q.difficulty === "Easy" || q.difficulty === "Medium" || q.difficulty === "Hard") ? q.difficulty : "Medium",
+              topic: q.topic || "General",
+              marks: q.marks || 15,
+              description: q.description || `Problem statement for "${q.title}". Write a program in the selected language to solve the challenge.`,
+              inputFormat: q.inputFormat || "Standard keyboard console input.",
+              outputFormat: q.outputFormat || "Standard output matching problem requirements.",
+              constraints: q.constraints || "Time: 2000ms\nMemory: 256MB",
+              sampleInput: q.sampleInput || "No sample input defined.",
+              sampleOutput: q.sampleOutput || "No sample output defined.",
+              explanation: q.explanation || "Process values dynamically.",
+              codeTemplates: (q.codeTemplates as any) || {
+                c: `// Language: C\n#include <stdio.h>\n\nint main() {\n    // solve\n    return 0;\n}`,
+                cpp: `// Language: C++17\n#include <iostream>\nusing namespace std;\n\nint main() {\n    // solve\n    return 0;\n}`,
+                java: `// Language: Java 17\nclass Solution {\n    public static void main(String[] args) {\n        // solve\n    }\n}`,
+                python: `# Language: Python 3.10\ndef solve():\n    pass\n\nsolve()`
+              }
+            };
+          });
+
+          setQuestions(mapped);
+          setCurrentQuestion(mapped[0]);
+
+          // Parse previous submissions
+          let savedSubmissions: Record<string, string> = {};
+          if (existingSession && existingSession.codeSubmissions) {
+            try {
+              const parsed = JSON.parse(existingSession.codeSubmissions);
+              if (parsed && typeof parsed === 'object') {
+                if (parsed.submissions) {
+                  savedSubmissions = parsed.submissions;
+                } else {
+                  savedSubmissions = parsed;
+                }
+              }
+            } catch (e) {}
+          }
+
+          const initialCodes: Record<string, string> = {};
+          mapped.forEach(mq => {
+            initialCodes[mq.id] = savedSubmissions[mq.id] || mq.codeTemplates.python;
+          });
+          setCodeContent(initialCodes);
+
+          const initialStates: Record<string, "not-visited" | "visited" | "attempted" | "submitted"> = {};
+          mapped.forEach((mq, idx) => {
+            if (savedSubmissions[mq.id]) {
+              initialStates[mq.id] = "submitted";
+            } else {
+              initialStates[mq.id] = idx === 0 ? "visited" : "not-visited";
+            }
+          });
+          setQuestionStates(initialStates);
+        }
+        return true;
       }
-    } else {
-      const redirectTimer = setTimeout(() => {
+      return false;
+    };
+
+    const success = checkAndHydrate();
+
+    if (!success) {
+      const handleSync = () => {
+        checkAndHydrate();
+      };
+      window.addEventListener("examcoder_db_synced", handleSync);
+
+      redirectTimer = setTimeout(() => {
         const currentAssessments = loadAssessments();
         if (!currentAssessments.find(a => a.id === assessmentId)) {
           alert("This assessment is not available or has been removed from the database.");
           router.push("/student/dashboard");
         }
-      }, 4000);
-      return () => clearTimeout(redirectTimer);
+      }, 6000);
+
+      return () => {
+        window.removeEventListener("examcoder_db_synced", handleSync);
+        clearTimeout(redirectTimer);
+      };
     }
   }, [assessmentId]);
 

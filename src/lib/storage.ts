@@ -257,7 +257,11 @@ export function triggerDbSync() {
 
         // If there were actual changes between local storage and database, reload the page to update the UI
         if (hasChanges) {
-          window.location.reload();
+          if (typeof window !== "undefined" && window.location.pathname.includes("/student/exam/")) {
+            window.dispatchEvent(new Event("examcoder_db_synced"));
+          } else {
+            window.location.reload();
+          }
         } else {
           window.dispatchEvent(new Event("examcoder_db_synced"));
         }
