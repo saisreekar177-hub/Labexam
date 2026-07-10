@@ -693,6 +693,261 @@ export default function StudentExamWorkspace({ params }: PageProps) {
     setConsoleOutput(`Language environment configured to: ${lang.toUpperCase()}`);
   };
 
+  const runCodeOnJupyterClientSide = async (
+    code: string,
+    inputData: string
+  ): Promise<{ stdout: string; stderr: string; exitCode: number; error: string | null }> => {
+    const ports = [8888, 8889];
+    let activePort = 8888;
+    let detected = false;
+    const token = "mock-token";
+
+    for (const port of ports) {
+      try {
+        const res = await fetch(`http://localhost:${port}/api/kernels?token=${token}`);
+        if (res.ok) {
+          activePort = port;
+          detected = true;
+          break;
+        }
+      } catch (e) {}
+    }
+
+    const jupyterUrl = `http://localhost:${activePort}`;
+
+    // Create kernel
+    const startRes = await fetch(`${jupyterUrl}/api/kernels?token=${token}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: "python3" })
+    });
+
+    if (!startRes.ok) {
+      throw new Error(`Failed to start local Python kernel on port ${activePort}. Ensure Jupyter is running.`);
+    }
+
+    const kernel = await startRes.ok ? await startRes.json() : null;
+    if (!kernel || !kernel.id) {
+      throw new Error("Local Jupyter kernel handshake failed.");
+    }
+    const kernelId = kernel.id;
+    const wsUrl = `ws://localhost:${activePort}/api/kernels/${kernelId}/channels?token=${token}`;
+
+    let finalCode = code;
+    const hasPrint = /\bprint\b|\bsys\.stdout\.write\b/.test(code);
+    if (!hasPrint) {
+      const runnerExtension = `
+
+# Auto-injected runner for function execution from stdin
+import sys
+import ast
+import inspect
+
+try:
+    user_funcs = []
+    for name, obj in list(globals().items()):
+        if name.startswith('_') or not callable(obj):
+            continue
+        if inspect.ismodule(obj) or inspect.isclass(obj):
+            continue
+        if name in ['ast', 'sys', 'inspect', 're', 'path', 'fs', 'NextResponse', 'spawn', 'finalCode', 'hasPrint', 'runnerExtension']:
+            continue
+        user_funcs.append(obj)
+        
+    if user_funcs:
+        try:
+            user_funcs.sort(key=lambda f: inspect.getsourcelines(f)[1])
+        except Exception:
+            pass
+        func = user_funcs[-1]
+        
+        input_str = sys.stdin.read().strip()
+        if (input_str.startswith('"') and input_str.endswith('"')) or (input_str.startswith("'") and input_str.endswith("'")):
+            eval_input = input_str[1:-1]
+        else:
+            eval_input = input_str
+            
+        sig = inspect.signature(func)
+        num_params = len(sig.parameters)
+        if num_params > 0:
+            if num_params == 1:
+                try:
+                    arg = ast.literal_eval(eval_input)
+                except Exception:
+                    arg = eval_input
+                res = func(arg)
+            else:
+                parts = eval_input.split(',')
+                if len(parts) != num_params:
+                    parts = eval_input.split()
+                args = []
+                for part in parts:
+                    try:
+                        args.append(ast.literal_eval(part.strip()))
+                    except Exception:
+                        args.append(part.strip())
+                res = func(*args[:num_params])
+        else:
+            res = func()
+        if res is not None:
+            print(res)
+except Exception:
+    pass
+`;
+      finalCode = code + runnerExtension;
+    }
+
+    return new Promise((resolve) => {
+      const ws = new WebSocket(wsUrl);
+      
+      let stdout = "";
+      let stderr = "";
+      let error = "";
+      let traceback: string[] = [];
+      let hasReceivedReply = false;
+      let isDone = false;
+
+      const cleanup = async () => {
+        if (isDone) return;
+        isDone = true;
+        try {
+          ws.close();
+        } catch (e) {}
+        
+        try {
+          await fetch(`${jupyterUrl}/api/kernels/${kernelId}?token=${token}`, {
+            method: "DELETE"
+          });
+        } catch (e) {}
+      };
+
+      const timeoutTimer = setTimeout(async () => {
+        await cleanup();
+        resolve({
+          stdout,
+          stderr: stderr + "\nTime Limit Exceeded: Execution timed out after 15 seconds.",
+          exitCode: 1,
+          error: "TimeLimitExceeded"
+        });
+      }, 15000);
+
+      ws.onopen = () => {
+        const session = Math.random().toString(36).substring(2);
+        const msgId = Math.random().toString(36).substring(2);
+
+        const executeRequest = {
+          channel: "shell",
+          header: {
+            msg_id: msgId,
+            username: "student",
+            session: session,
+            msg_type: "execute_request",
+            version: "5.3"
+          },
+          parent_header: {},
+          metadata: {},
+          content: {
+            code: finalCode,
+            silent: false,
+            store_history: false,
+            user_expressions: {},
+            allow_stdin: true,
+            stop_on_error: true
+          },
+          buffers: []
+        };
+        ws.send(JSON.stringify(executeRequest));
+      };
+
+      const inputs = inputData ? inputData.split("\n") : [];
+      let inputIdx = 0;
+
+      ws.onmessage = (event) => {
+        try {
+          const msg = JSON.parse(event.data);
+          const msgType = msg.header.msg_type;
+
+          if (msgType === "stream") {
+            const streamName = msg.content.name;
+            const text = msg.content.text;
+            if (streamName === "stdout") {
+              stdout += text;
+            } else if (streamName === "stderr") {
+              stderr += text;
+            }
+          } else if (msgType === "error") {
+            error = msg.content.evalue || "RuntimeError";
+            const stripAnsi = (str: string) => str.replace(/[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g, "");
+            traceback = (msg.content.traceback || []).map((t: string) => stripAnsi(t));
+          } else if (msgType === "execute_reply") {
+            hasReceivedReply = true;
+            if (msg.content.status === "error") {
+              error = error || msg.content.evalue || "ExecutionError";
+            }
+          } else if (msgType === "input_request") {
+            const promptValue = inputIdx < inputs.length ? inputs[inputIdx] : "";
+            inputIdx++;
+
+            const inputReply = {
+              channel: "stdin",
+              header: {
+                msg_id: Math.random().toString(36).substring(2),
+                username: "student",
+                session: msg.header.session,
+                msg_type: "input_reply",
+                version: "5.3"
+              },
+              parent_header: msg.header,
+              metadata: {},
+              content: {
+                value: promptValue
+              }
+            };
+            ws.send(JSON.stringify(inputReply));
+          } else if (msgType === "status") {
+            const state = msg.content.execution_state;
+            if (state === "idle" && hasReceivedReply) {
+              setTimeout(async () => {
+                clearTimeout(timeoutTimer);
+                await cleanup();
+                resolve({
+                  stdout,
+                  stderr: error ? `${error}\n${traceback.join("\n")}` : stderr,
+                  exitCode: error ? 1 : 0,
+                  error: error || null
+                });
+              }, 100);
+            }
+          }
+        } catch (e) {
+          console.error("Error parsing Jupyter WebSocket message:", e);
+        }
+      };
+
+      ws.onerror = async (err) => {
+        clearTimeout(timeoutTimer);
+        await cleanup();
+        resolve({
+          stdout,
+          stderr: stderr + "\nWebSocket connection error. Make sure local Jupyter is running.",
+          exitCode: 1,
+          error: "WebSocketError"
+        });
+      };
+
+      ws.onclose = async () => {
+        clearTimeout(timeoutTimer);
+        await cleanup();
+        resolve({
+          stdout,
+          stderr: error ? `${error}\n${traceback.join("\n")}` : stderr,
+          exitCode: error ? 1 : 0,
+          error: error || null
+        });
+      };
+    });
+  };
+
   // Run Code logic
   const executeRunCode = async () => {
     if (isQuestionSubmitted || networkError) return;
@@ -704,18 +959,25 @@ export default function StudentExamWorkspace({ params }: PageProps) {
     const inputToRun = currentQuestion.sampleInput || "";
 
     try {
-      const res = await fetch("/api/compile", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          code: codeToRun,
-          language: selectedLanguage,
-          input: inputToRun,
-          questionTitle: currentQuestion.title
-        })
-      });
+      let data;
+      if (selectedLanguage === "python") {
+        setConsoleOutput("Connecting directly to local Jupyter Server (localhost)...\nExecuting Python code cells...\n");
+        const executionResult = await runCodeOnJupyterClientSide(codeToRun, inputToRun);
+        data = { status: "success", ...executionResult };
+      } else {
+        const res = await fetch("/api/compile", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            code: codeToRun,
+            language: selectedLanguage,
+            input: inputToRun,
+            questionTitle: currentQuestion.title
+          })
+        });
+        data = await res.json();
+      }
 
-      const data = await res.json();
       setIsRunning(false);
 
       if (data.status === "success") {
